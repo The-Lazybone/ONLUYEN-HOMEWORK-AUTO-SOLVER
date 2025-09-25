@@ -462,19 +462,20 @@
 
                 this._simulateClick(submitButton);
                 logger.debug('Clicked submit button');
-
-                // Wait for a short period for the DOM to update after click
-                await new Promise(r => setTimeout(r, 1000)); 
-
-                // Check the text of the *same* button element after the click
-                const currentButtonText = (submitButton.innerText || submitButton.value || '').trim();
-                if (currentButtonText === 'Kết thúc') {
-                    logger.info('Detected "Kết thúc" button. Stopping solver.');
-                    window.hwSolver.stop(); // Assuming hwSolver is globally accessible
-                    return true; // Indicate successful submission and stop
-                }
                 
                 return true; // Indicate successful submission
+            }
+
+            checkStopButton() {
+                const ketThucButton = Array.from(document.querySelectorAll('button, input[type="button"], input[type="submit"]'))
+                    .find(b => (b.innerText || b.value || '').trim() === 'Kết thúc');
+
+                if (ketThucButton) {
+                    logger.info('Detected "Kết thúc" button. Stopping solver.');
+                    window.hwSolver.stop();
+                    return true; // Stop condition met
+                }
+                return false; // Stop condition not met
             }
             }
 
@@ -558,6 +559,12 @@
 
                 async solveOnce() {
                     logger.debug('Starting new solve cycle.');
+
+                    // Check for "Kết thúc" button before attempting to solve any question
+                    if (this.ui.checkStopButton()) {
+                        return true; // Solver stopped, consider this cycle successful in terms of stopping
+                    }
+
                     const detected = this.scraper.detectQuestionType();
                     
                     switch (detected.type) {
