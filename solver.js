@@ -787,23 +787,23 @@
             // Auto-start the solver. Comment this out to start manually.
             // The script may be injected after the page 'load' event; check document.readyState
             // and schedule start immediately if the page is already loaded.
-            logger.debug('Preparing auto-start (will start after load or immediately if already loaded)...');
-            const _scheduleAutoStart = () => {
-                const startHandler = () => {
-                    logger.debug('Window load event fired. Scheduling solver start...');
-                    logger.info('Page loaded. Starting solver automatically in 2 seconds...');
-                    setTimeout(() => solver.start(), 2000);
-                };
+            // logger.debug('Preparing auto-start (will start after load or immediately if already loaded)...');
+            // const _scheduleAutoStart = () => {
+            //     const startHandler = () => {
+            //         logger.debug('Window load event fired. Scheduling solver start...');
+            //         logger.info('Page loaded. Starting solver automatically in 2 seconds...');
+            //         setTimeout(() => solver.start(), 2000);
+            //     };
 
-                if (document.readyState === 'complete' || document.readyState === 'interactive') {
-                    // If page already loaded or interactive, schedule start on next tick
-                    logger.debug('Document readyState is', document.readyState, '- starting solver shortly');
-                    setTimeout(startHandler, 0);
-                } else {
-                    window.addEventListener('load', startHandler);
-                }
-            };
+            //     if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            //         // If page already loaded or interactive, schedule start on next tick
+            //         logger.debug('Document readyState is', document.readyState, '- starting solver shortly');
+            //         setTimeout(startHandler, 0);
+            //     } else {
+            //         window.addEventListener('load', startHandler);
+            //     }
+            // };
 
-            _scheduleAutoStart();
+            // _scheduleAutoStart();
 
         })();
