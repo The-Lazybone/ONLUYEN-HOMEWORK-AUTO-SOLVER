@@ -52,7 +52,7 @@ Important safety and scope notes:
 
 ## Credits
 
-Developed and tested using the Pollinations.ai proxy. Thanks to Pollinations for providing the API/proxy used during development.
+Developed and tested using the Pollinations.ai proxy. Thanks to [Pollinations](https://pollinations.ai) for providing the API/proxy used during development.
 
 ## License & disclaimer
 
