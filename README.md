@@ -33,6 +33,9 @@ This repository contains a single-file prototype (in `solver.js`) that demonstra
 
 This project was tested with the Pollinations proxy. You can request a key at [auth.pollinations.ai](https://auth.pollinations.ai). Keep the key private.
 
+## Model Names
+Model names used in `solver.js` (e.g., `deepseek-reasoning`, `openai-reasoning`) can be found at [text.pollinations.ai/models](https://text.pollinations.ai/models). Refer to this link if you wish to change the default models used by the solver.
+
 ## How the code reads the API key
 
 Priority order:
