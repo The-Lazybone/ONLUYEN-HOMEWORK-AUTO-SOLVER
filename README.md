@@ -1,4 +1,4 @@
-# ONLUYEN.VN HƠMEWORK SOLVER
+# ONLUYEN.VN HOMEWORK SOLVER
 
 This repository contains a single-file prototype (in `solver.js`) that demonstrates a browser-driven approach to scraping question text, building prompts for an LLM proxy, and simulating UI interactions to submit answers. The code is intentionally generic, but selectors and small behaviors were tuned and tested against onluyen.vn during development. It is NOT limited to that site — however, site-specific selectors or timing may need adjustments for other platforms.
 
