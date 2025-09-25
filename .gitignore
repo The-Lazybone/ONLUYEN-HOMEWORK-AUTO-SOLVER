@@ -27,3 +27,10 @@ build/
 # Optional: ignore local data (if any)
 *.sqlite
 *.db
+
+# Configuration files
+.prettierrc
+eslint.config.mjs
+
+# .gitignore
+.gitignore

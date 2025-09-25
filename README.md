@@ -44,7 +44,6 @@ See `.env.example` for the variable name if you run local checks.
 
 ## Contributing & safety
 
-
 Important safety and scope notes:
 
 - This is a research/proof-of-concept tool. It is not a turnkey bot for every site. Different sites use different DOM structures, event models, and protections (CSP, anti-bot measures). You will likely need to update CSS selectors (Scraper and UIController) to match the target site.
