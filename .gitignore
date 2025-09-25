@@ -1,0 +1,29 @@
+# Node / JS
+node_modules/
+npm-debug.log*
+package-lock.json
+yarn.lock
+
+# Env files
+.env
+.env.*
+
+# Editor / OS files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+hw-solver.log
+
+# Sensitive runtime overrides
+.env.local
+
+# Ignore built artifacts or test outputs
+dist/
+build/
+
+# Optional: ignore local data (if any)
+*.sqlite
+*.db
