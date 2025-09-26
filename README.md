@@ -1,31 +1,33 @@
-# ONLUYEN.VN HOMEWORK SOLVER
+# 🚀 AI Homework Solver for Web Pages
 
-This repository contains a single-file prototype (in `solver.js`) that demonstrates a browser-driven approach to scraping question text, building prompts for an LLM proxy, and simulating UI interactions to submit answers. The code is intentionally generic, but selectors and small behaviors were tuned and tested against onluyen.vn during development. It is NOT limited to that site — however, site-specific selectors or timing may need adjustments for other platforms.
+This tool helps you automatically answer homework questions on websites like `onluyen.vn` using Artificial Intelligence. It works by reading the questions from the webpage, sending them to an AI, and then automatically filling in or selecting the answers for you.
 
-## Quickstart: How to Use the Homework Solver
+It's designed to be flexible, but you might need to adjust it slightly for different websites.
 
-This guide will show you how to easily run the Homework Solver in your web browser. You have two options: a simple copy-and-paste method, or a convenient one-line command using the hosted script.
+## 📋 Quick Setup Guide: Get Started in Minutes!
 
-### Option 1: Copy and Paste (No Setup Required)
+You have two easy ways to use the Homework Solver in your web browser.
 
-This is the quickest way to get started.
+### Option 1: Copy and Paste (No Downloads Needed!)
 
-1. **Go to Your Homework Page**: Open the website where your homework questions are located (for example, `onluyen.vn`).
-2. **Open Your Browser's Console**:
-    * Right-click anywhere on the page.
-    * Select "Inspect" or "Inspect Element" from the menu.
-    * Click on the "Console" tab in the window that appears.
-3. **Enter Your API Key**: In the Console, type the following line and press Enter. Make sure to replace `'YOUR_API_KEY_HERE'` with your actual API key (you can find information on where to get one below).
+This is the fastest way to get started.
+
+1.  **Open Your Homework Page**: Go to the website where your homework questions are (e.g., `onluyen.vn`).
+2.  **Open Your Browser's Console**:
+    *   Right-click anywhere on the page.
+    *   Choose "Inspect" or "Inspect Element" from the menu.
+    *   Click on the "Console" tab in the window that opens.
+3.  **Enter Your AI Key**: Type the following line into the Console and press `Enter`. Replace `'YOUR_API_KEY_HERE'` with your actual AI key (see "🔑 Get Your Free AI Key" below for how to get one).
 
     ```js
     window.__HW_SOLVER_POLL_KEY__ = 'YOUR_API_KEY_HERE';
     ```
 
-4. **Load the Solver Script**:
-    * Go to the `solver.js` file in this repository.
-    * Copy **all** the code from that file.
-    * Paste the copied code directly into your browser's Console and press Enter.
-5. **Start Solving!**: Now the solver is ready. You must explicitly tell it to start:
+4.  **Load the Solver Script**:
+    *   Go to the `solver.js` file in this project (you can find it on GitHub).
+    *   Copy **all** the code from that file.
+    *   Paste the copied code directly into your browser's Console and press `Enter`.
+5.  **Start Solving!**: The solver is now ready. You need to tell it to begin:
 
     ```js
     hwSolver.start(); // This will make the solver automatically try to answer questions one by one.
@@ -33,23 +35,19 @@ This is the quickest way to get started.
     // hwSolver.solveOnce();
     ```
 
-    * (Optional) If you want the solver to show its "thinking process" before giving an answer, type `hwSolver.toggleThinkBeforeAnswer();` into the console before `hwSolver.start()`.
+### Option 2: One-Line Fetch (Even Faster!)
 
-> **Troubleshooting Tip**: If your browser prevents you from pasting or running the script directly (sometimes due to security settings), you might need to use your browser's "Snippets" feature (found in the "Sources" tab of the Developer Tools) or save `solver.js` as a local file and load it from there.
+This method loads the script directly from GitHub, saving you a copy-paste step.
 
-### Option 2: One-Line Fetch (Using GitHub Pages)
-
-This method is even faster and more convenient, as the project is already hosted on GitHub Pages.
-
-1. **Go to Your Homework Page**: Open the website with your homework questions (e.g., `onluyen.vn`).
-2. **Open Your Browser's Console** (Right-click > Inspect > Console).
-3. **Enter Your API Key**: Just like in Option 1, type this line and press Enter, replacing `'YOUR_API_KEY_HERE'` with your API key:
+1.  **Open Your Homework Page**: Go to the website with your homework questions (e.g., `onluyen.vn`).
+2.  **Open Your Browser's Console** (Right-click > Inspect > Console).
+3.  **Enter Your AI Key**: Just like in Option 1, type this line and press `Enter`, replacing `'YOUR_API_KEY_HERE'` with your AI key:
 
     ```js
     window.__HW_SOLVER_POLL_KEY__ = 'YOUR_API_KEY_HERE';
     ```
 
-4. **Load and Run the Solver**: Paste this single line into the Console and press Enter. This command will fetch the `solver.js` script directly from the project's GitHub Pages and run it.
+4.  **Load and Run the Solver**: Paste this single line into the Console and press `Enter`.
 
     ```js
     fetch('https://the-lazybone.github.io/ONLUYEN-HOMEWORK-AUTO-SOLVER/solver.js')
@@ -58,50 +56,54 @@ This method is even faster and more convenient, as the project is already hosted
       .catch(error => console.error('Failed to load or run solver script:', error));
     ```
 
-5. **Start Solving!**: After the script loads, you must explicitly tell it to start:
+5.  **Start Solving!**: After the script loads, tell it to begin:
 
     ```js
     hwSolver.start(); // Or hwSolver.solveOnce();
     ```
 
-> **Important Security Note**: The `eval()` command executes code directly from the internet. Only use this method with scripts from sources you completely trust. The error handling in the one-liner helps catch issues, but always be careful.
+## 🔑 Get Your Free AI Key
 
-## Tested browsers
+This project uses the Pollinations AI proxy to connect to powerful AI models. You'll need a key to use their service.
 
-* Microsoft Edge (Chromium)
-* Google Chrome
-* Brave
+*   **Where to get it**: Request a free key at [auth.pollinations.ai](https://auth.pollinations.ai).
+*   **Keep it private**: Treat your AI key like a password. Don't share it or put it in public code.
 
-## Where to get an API key
+## 🎮 How to Control the Solver
 
-This project was tested with the Pollinations proxy. You can request a key at [auth.pollinations.ai](https://auth.pollinations.ai). Keep the key private.
+Once the `solver.js` script is loaded, you can use these commands in your browser's Console:
 
-## Model Names
+*   `hwSolver.start()`: Starts the solver, which will automatically try to answer questions one by one.
+*   `hwSolver.stop()`: Stops the automatic solving process.
+*   `hwSolver.solveOnce()`: Solves only the current question and then stops.
+*   `hwSolver.toggleInstantMode()`: Switches between fast (instant) typing and human-like typing speeds.
+*   `hwSolver.toggleThinkBeforeAnswer()`: Toggles whether the AI shows its internal reasoning before giving a final answer.
+*   `hwSolver.help()`: Shows a list of available commands in the console.
 
-Model names used in `solver.js` (e.g., `deepseek-reasoning`, `openai-reasoning`) can be found at [text.pollinations.ai/models](https://text.pollinations.ai/models). Refer to this link if you wish to change the default models used by the solver.
+## ❓ Frequently Asked Questions
 
-## How the code reads the API key
+*   **"My browser blocked the script!"**: Some browsers have strict security. Try using your browser's "Snippets" feature (usually in the "Sources" tab of Developer Tools) or save `solver.js` to your computer and load it as a local file.
+*   **"The solver isn't working on my homework site."**: This tool was primarily tested on `onluyen.vn`. Other sites might have different layouts. You might need to update the "selectors" (the parts of the code that find buttons and text boxes) in `solver.js`. This usually requires some coding knowledge.
+*   **"What AI models can I use?"**: The `solver.js` file uses models like `deepseek-reasoning` or `openai-reasoning`. You can find a list of supported models at [text.pollinations.ai/models](https://text.pollinations.ai/models) if you want to change them in the `solver.js` file.
 
-Priority order:
+## ⚠️ Important Notes
 
-* `window.__HW_SOLVER_POLL_KEY__` (runtime injection — preferred)
-* `process.env.HW_SOLVER_POLL_KEY` when available (for local Node checks / builds)
+*   **Security Warning for Option 2 (`eval()` command)**: The one-line fetch method uses `eval()`, which runs code directly from the internet. **Only use this with scripts from sources you completely trust.** While we've included error handling, always be cautious.
+*   **Permissions & Ethics**: This is a research and testing tool. **Always get permission** before using automated tools on any website. Using automation without consent can violate terms of service and local laws. Do not use this tool to cheat or facilitate academic dishonesty.
+*   **Customization**: This is a prototype. If you want to use it on a new site, you'll likely need to update the CSS selectors (in the `Scraper` and `UIController` classes within `solver.js`) to match that site's specific design.
+*   **Tested Browsers**:
+    *   Microsoft Edge (Chromium)
+    *   Google Chrome
+    *   Brave
 
-See `.env.example` for the variable name if you run local checks.
+## 🔧 For Advanced Users & Developers
 
-## Contributing & safety
-
-Important safety and scope notes:
-
-* This is a research/proof-of-concept tool. It is not a turnkey bot for every site. Different sites use different DOM structures, event models, and protections (CSP, anti-bot measures). You will likely need to update CSS selectors (Scraper and UIController) to match the target site.
-* Always obtain permission before running automated interactions on third-party platforms. Running automation against a live site without consent can violate terms of service and local laws.
-* Keep API keys private and do not commit them to source control. Use `.env` files or runtime injection per the README instructions.
+*   **API Key Priority**: The code reads the AI key in this order:
+    1.  `window.__HW_SOLVER_POLL_KEY__` (injected via browser console - preferred)
+    2.  `process.env.HW_SOLVER_POLL_KEY` (for local Node.js environments)
+*   **Contributing**: Feel free to contribute! If you find bugs or want to add features, please open an issue or pull request.
+*   **License**: This project is open-source. Please add a `LICENSE` file (MIT license is recommended) with your name before publishing or distributing.
 
 ## Credits
 
-Developed and tested using the Pollinations.ai proxy. Thanks to [Pollinations](https://pollinations.ai) for providing the API/proxy used during development.
-
-## License & disclaimer
-
-* Add a LICENSE (MIT recommended) before publishing with your name.
-* Ethics: "Research / automation testing only — do not use to facilitate academic dishonesty."
+Developed and tested using the Pollinations.ai proxy. Special thanks to [Pollinations](https://pollinations.ai) for their API/proxy service.
