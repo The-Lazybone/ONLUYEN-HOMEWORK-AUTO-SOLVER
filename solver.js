@@ -696,29 +696,61 @@
             this._simulateClick(submitButton);
             logger.debug("Clicked submit button");
 
-            return true; // Indicate successful submission
-        }
-
-        checkStopButton() {
-            const ketThucButton = Array.from(
-                document.querySelectorAll(
-                    'button, input[type="button"], input[type="submit"]'
-                )
-            ).find((b) => (b.innerText || b.value || "").trim() === "Kết thúc");
-
-            if (ketThucButton) {
-                logger.info('Detected "Kết thúc" button. Stopping solver.');
-                window.hwSolver.stop();
-                return true; // Stop condition met
+                return true; // Indicate successful submission
             }
-            return false; // Stop condition not met
-        }
+
+            async clickSkip() {
+                const candidates = Array.from(
+                    document.querySelectorAll(
+                        'button, input[type="button"], input[type="submit"]'
+                    )
+                ).filter((b) => !b.disabled);
+                const selectors = [
+                    (b) => (b.innerText || b.value || "").trim() === "Bỏ qua",
+                    (b) => b.matches("button.btn-gray"),
+                    (b) => /skip|bỏ qua/i.test(b.innerText || b.value || ""),
+                ];
+
+                let skipButton = null;
+                for (const selector of selectors) {
+                    skipButton = candidates.find(selector);
+                    if (skipButton) {
+                        break;
+                    }
+                }
+
+                if (!skipButton) {
+                    logger.warn("Skip button ('Bỏ qua') not found.");
+                    return false;
+                }
+
+                this._simulateClick(skipButton);
+                logger.info("Clicked skip button ('Bỏ qua').");
+                await new Promise((r) => setTimeout(r, 500)); // Small delay for page to react
+                return true;
+            }
+
+            checkStopButton() {
+                const ketThucButton = Array.from(
+                    document.querySelectorAll(
+                        'button, input[type="button"], input[type="submit"]'
+                    )
+                ).find((b) => (b.innerText || b.value || "").trim() === "Kết thúc");
+
+                if (ketThucButton) {
+                    logger.info('Detected "Kết thúc" button. Stopping solver.');
+                    window.hwSolver.stop();
+                    return true; // Stop condition met
+                }
+                return false; // Stop condition not met
+            }
     }
 
     // -------------- SCHEDULER CLASS --------------
     class Scheduler {
-        constructor(task) {
+        constructor(task, solver) {
             this.task = task;
+            this.solver = solver;
             this.timer = null;
             this.active = false;
             this.failureCount = 0;
@@ -749,12 +781,25 @@
                 this.failureCount++;
                 if (this.failureCount >= CONFIG.RETRIES) {
                     logger.warn(
-                        `Max retries (${CONFIG.RETRIES}) reached for current question. Skipping to next.`
+                        `Max retries (${CONFIG.RETRIES}) reached for current question. Attempting to skip...`
                     );
-                    // Signal to the task that it should consider this question "handled" (skipped)
-                    // and reset failure count for the next cycle.
                     this.failureCount = 0;
-                    this.timer = setTimeout(() => this._runTask(true), 0); // Immediately try next question
+                    // Schedule an async skip action
+                    this.timer = setTimeout(async () => {
+                        try {
+                            const skipped = await this.solver.skipCurrentQuestion();
+                            if (skipped) {
+                                logger.info("Successfully skipped question.");
+                            } else {
+                                logger.warn("Could not find skip button, proceeding to next question.");
+                            }
+                            // Treat as success to advance
+                            this._scheduleNext(true);
+                        } catch (e) {
+                            logger.error("Skip attempt failed:", e);
+                            this._scheduleNext(true);
+                        }
+                    }, 0);
                     return;
                 }
             }
@@ -792,7 +837,7 @@
             this.api = new APIClient();
             this.scraper = new Scraper();
             this.ui = new UIController();
-            this.scheduler = new Scheduler(this.solveOnce.bind(this));
+            this.scheduler = new Scheduler(this.solveOnce.bind(this), this);
         }
 
         start() {
@@ -800,6 +845,10 @@
         }
         stop() {
             this.scheduler.stop();
+        }
+
+        async skipCurrentQuestion() {
+            return await this.ui.clickSkip();
         }
 
         async solveOnce() {
