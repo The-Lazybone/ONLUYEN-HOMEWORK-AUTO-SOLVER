@@ -693,8 +693,18 @@
                 return false;
             }
 
-            this._simulateClick(submitButton);
-            logger.debug("Clicked submit button");
+                this._simulateClick(submitButton);
+                logger.debug("Clicked submit button");
+                await new Promise((r) => setTimeout(r, 500)); // Wait for potential UI change
+
+                // Check if the same button's text changed to "Kết thúc"
+                if ((submitButton.innerText || submitButton.value || "").trim() === "Kết thúc") {
+                    logger.info('Button text changed to "Kết thúc" after submission. Stopping solver.');
+                    if (window.hwSolver && window.hwSolver.stop) {
+                        window.hwSolver.stop();
+                    }
+                    return true;
+                }
 
                 return true; // Indicate successful submission
             }
@@ -727,6 +737,16 @@
                 this._simulateClick(skipButton);
                 logger.info("Clicked skip button ('Bỏ qua').");
                 await new Promise((r) => setTimeout(r, 500)); // Small delay for page to react
+
+                // Check if the same button's text changed to "Kết thúc"
+                if ((skipButton.innerText || skipButton.value || "").trim() === "Kết thúc") {
+                    logger.info('Button text changed to "Kết thúc" after skip. Stopping solver.');
+                    if (window.hwSolver && window.hwSolver.stop) {
+                        window.hwSolver.stop();
+                    }
+                    return true;
+                }
+
                 return true;
             }
 
