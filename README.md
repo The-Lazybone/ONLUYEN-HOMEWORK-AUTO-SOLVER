@@ -4,6 +4,13 @@ This tool helps you automatically answer homework questions on websites like `on
 
 It's designed to be flexible, but you might need to adjust it slightly for different websites.
 
+## 🔑 Get Your Free AI Key
+
+This project uses the Pollinations AI proxy to connect to powerful AI models. You'll need a key to use their service.
+
+*   **Where to get it**: Request a free key at [auth.pollinations.ai](https://auth.pollinations.ai).
+*   **Keep it private**: Treat your AI key like a password. Don't share it or put it in public code.
+
 ## 📋 Quick Setup Guide: Get Started in Minutes!
 
 You have two easy ways to use the Homework Solver in your web browser.
@@ -61,13 +68,6 @@ This method loads the script directly from GitHub, saving you a copy-paste step.
     ```js
     hwSolver.start(); // Or hwSolver.solveOnce();
     ```
-
-## 🔑 Get Your Free AI Key
-
-This project uses the Pollinations AI proxy to connect to powerful AI models. You'll need a key to use their service.
-
-*   **Where to get it**: Request a free key at [auth.pollinations.ai](https://auth.pollinations.ai).
-*   **Keep it private**: Treat your AI key like a password. Don't share it or put it in public code.
 
 ## 🎮 How to Control the Solver
 
