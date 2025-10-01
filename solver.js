@@ -352,7 +352,7 @@
         detectQuestionType() {
             const containers = this._getQuestionContainers();
             for (const container of containers) {
-                logger.debug('Attempting to detect question type in container:', container);
+                logger.debug('Attempting to detect question type in container with class:', container.className || container.tagName);
                 const mcq = this.scrapeMCQ(container);
                 if (mcq.options.length) return mcq;
                 const fill = this.scrapeFillable(container);
@@ -371,7 +371,9 @@
                 container.querySelector(".fadein") ||
                 container.querySelector(".question-text") ||
                 container;
+            logger.debug('scrapeMCQ: qNode found:', qNode);
             const questionText = this._getCleanedText(qNode);
+            logger.debug('scrapeMCQ: questionText:', questionText);
             const images = this._scrapeImages(qNode);
 
             const nodes = Array.from(
@@ -425,6 +427,7 @@
                 container.querySelector(".fadein") ||
                 container.querySelector(".question-text") ||
                 container;
+            logger.debug('scrapeFillable: qNode found:', qNode);
             const inputs = Array.from(
                 container.querySelectorAll("input[type='text'], textarea")
             );
@@ -454,6 +457,7 @@
                         );
                     });
                 questionText = this._getCleanedText(clone);
+                logger.debug('scrapeFillable: questionText:', questionText);
             }
             const images = this._scrapeImages(qNode);
 
@@ -474,12 +478,14 @@
                 container.querySelector(".fadein") ||
                 container.querySelector(".question-text") ||
                 container;
+            logger.debug('scrapeTrueFalse: qNode found:', qNode);
             const questionText = this._getCleanedText(qNode);
+            logger.debug('scrapeTrueFalse: questionText:', questionText);
             const images = this._scrapeImages(qNode);
             const table = this._scrapeTable(qNode);
 
             const subQuestionNodes = Array.from(
-                document.querySelectorAll(".question-child .child-content")
+                container.querySelectorAll(".question-child .child-content")
             );
             const subQuestions = subQuestionNodes
                 .map((node) => ({
@@ -1142,6 +1148,7 @@
         solveOnce: solver.solveOnce.bind(solver),
         config: CONFIG,
         logger: logger,
+        scraper: solver.scraper, // Expose the scraper instance
         toggleInstantMode: () => {
             CONFIG.INSTANT_MODE = !CONFIG.INSTANT_MODE;
             logger.info(
