@@ -244,12 +244,11 @@
             return fractionMap[word.toLowerCase()];
         }
 
-        _getContainer() {
-            return (
-                document.querySelector(".question-name") ||
-                document.querySelector("#step") ||
-                document.body
-            );
+        _getQuestionContainers() {
+            // Return all potential question containers
+            return Array.from(
+                document.querySelectorAll(".question-name, #step")
+            ).filter(el => el.offsetParent !== null); // Filter out elements not currently visible/in document flow
         }
 
         _getCleanedText(element) {
@@ -351,17 +350,20 @@
         }
 
         detectQuestionType() {
-            const mcq = this.scrapeMCQ();
-            if (mcq.options.length) return mcq;
-            const fill = this.scrapeFillable();
-            if (fill.blanks.length) return fill;
-            const trueFalse = this.scrapeTrueFalse();
-            if (trueFalse.subQuestions.length) return trueFalse;
+            const containers = this._getQuestionContainers();
+            for (const container of containers) {
+                logger.debug('Attempting to detect question type in container:', container);
+                const mcq = this.scrapeMCQ(container);
+                if (mcq.options.length) return mcq;
+                const fill = this.scrapeFillable(container);
+                if (fill.blanks.length) return fill;
+                const trueFalse = this.scrapeTrueFalse(container);
+                if (trueFalse.subQuestions.length) return trueFalse;
+            }
             return { type: "unknown" };
         }
 
-        scrapeMCQ() {
-            const container = this._getContainer();
+        scrapeMCQ(container) {
             if (!container)
                 return { type: "mcq", question: "", options: [], images: [] };
 
@@ -373,31 +375,44 @@
             const images = this._scrapeImages(qNode);
 
             const nodes = Array.from(
-                document.querySelectorAll(
-                    ".row.text-left.options .question-option"
+                container.querySelectorAll( // Use container.querySelectorAll here
+                    ".row.text-left.options .question-option, .list-selection .select-item"
                 )
             );
             const options = nodes
-                .map((node) => ({
-                    letter:
-                        node
-                            .querySelector(".question-option-label")
-                            ?.innerText.trim() || null,
-                    text: this._getCleanedText(
-                        node.querySelector(".question-option-content")
-                    ),
-                    images: this._scrapeImages(
-                        node.querySelector(".question-option-content")
-                    ),
-                    element: node,
-                }))
+                .map((node) => {
+                    let letter, text, contentNode;
+                    if (node.matches(".question-option")) {
+                        // Legacy format
+                        logger.debug("Processing legacy MCQ option format.");
+                        letter = node.querySelector(".question-option-label")?.innerText.trim() || null;
+                        contentNode = node.querySelector(".question-option-content");
+                        text = this._getCleanedText(contentNode);
+                    } else {
+                        // New format for .select-item
+                        logger.debug("Processing new MCQ option format.");
+                        letter = node.querySelector(".number-item")?.innerText.trim().toUpperCase() || null;
+                        contentNode = node.querySelector("label");
+                        text = this._getCleanedText(contentNode);
+                    }
+
+                    return {
+                        letter,
+                        text,
+                        images: contentNode ? this._scrapeImages(contentNode) : [],
+                        element: node,
+                    };
+                })
                 .filter((o) => o.letter);
+
+            if (options.length > 0) {
+                 logger.debug(`Scraped ${options.length} MCQ options using combined selector.`);
+            }
 
             return { type: "mcq", question: questionText, options, images };
         }
 
-        scrapeFillable() {
-            const container = this._getContainer();
+        scrapeFillable(container) {
             if (!container)
                 return {
                     type: "fillable",
@@ -445,8 +460,7 @@
             return { type: "fillable", question: questionText, blanks, images };
         }
 
-        scrapeTrueFalse() {
-            const container = this._getContainer();
+        scrapeTrueFalse(container) {
             if (!container)
                 return {
                     type: "truefalse",
@@ -695,7 +709,7 @@
 
                 this._simulateClick(submitButton);
                 logger.debug("Clicked submit button");
-                await new Promise((r) => setTimeout(r, 500)); // Wait for potential UI change
+                await new Promise((r) => setTimeout(r, 2000)); // Delay for UI change
 
                 // Check if the same button's text changed to "Kết thúc"
                 if ((submitButton.innerText || submitButton.value || "").trim() === "Kết thúc") {
@@ -736,7 +750,7 @@
 
                 this._simulateClick(skipButton);
                 logger.info("Clicked skip button ('Bỏ qua').");
-                await new Promise((r) => setTimeout(r, 500)); // Small delay for page to react
+                await new Promise((r) => setTimeout(r, 2000)); // Increased delay for UI change
 
                 // Check if the same button's text changed to "Kết thúc"
                 if ((skipButton.innerText || skipButton.value || "").trim() === "Kết thúc") {
@@ -1066,7 +1080,7 @@
 
             await this.ui.fillBlank(blanks[0], answerText);
             // Small delay to ensure all input processing is complete before submitting
-            await new Promise((r) => setTimeout(r, 500));
+            await new Promise((r) => setTimeout(r, 2500));
             return this.ui.clickSubmit();
         }
 

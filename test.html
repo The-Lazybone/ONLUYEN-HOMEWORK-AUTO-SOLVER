@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MCQ Scraper Test</title>
+</head>
+<body>
+
+    <h1>Test Page for MCQ Scraper</h1>
+
+    <h2>Old Question Format</h2>
+    <div class="question-name">
+        <div class="fadein">
+            <p>This is a sample question in the old format.</p>
+        </div>
+        <div class="row text-left options">
+            <div class="question-option">
+                <div class="question-option-label">A</div>
+                <div class="question-option-content">Option A</div>
+            </div>
+            <div class="question-option">
+                <div class="question-option-label">B</div>
+                <div class="question-option-content">Option B</div>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <h2>New Question Format</h2>
+    <div class="question-name">
+        <div class="fadein">
+            <div class="content">
+                <div class="text-small">This is a sample question in the new format.</div>
+            </div>
+            <div class="list-selection vertical-sort">
+                <div class="select-item">
+                    <input class="form-check-input" name="answer" type="radio" value="1">
+                    <span class="number-item">a</span>
+                    <label>Option a</label>
+                </div>
+                <div class="select-item">
+                    <input class="form-check-input" name="answer" type="radio" value="2">
+                    <span class="number-item">b</span>
+                    <label>Option b</label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="solver.js"></script>
+    <script>
+        // Override the solver's start behavior for testing
+        window.addEventListener('load', () => {
+            console.log("Test page loaded. Overriding auto-start.");
+            if (window.hwSolver) {
+                // We don't want the scheduler to run, just test the scraper
+                window.hwSolver.stop();
+                console.log("Running manual scrape test...");
+                try {
+                    const detected = window.hwSolver.scraper.detectQuestionType();
+                    console.log("Scraped Data:", detected);
+                } catch (e) {
+                    console.error("Error during manual scrape:", e);
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
