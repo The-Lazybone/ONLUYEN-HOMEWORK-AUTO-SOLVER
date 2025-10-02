@@ -248,7 +248,7 @@
             // Return all potential question containers
             return Array.from(
                 document.querySelectorAll(".question-name, #step")
-            ).filter(el => el.offsetParent !== null); // Filter out elements not currently visible/in document flow
+            ).filter((el) => el.offsetParent !== null); // Filter out elements not currently visible/in document flow
         }
 
         _getCleanedText(element) {
@@ -352,7 +352,10 @@
         detectQuestionType() {
             const containers = this._getQuestionContainers();
             for (const container of containers) {
-                logger.debug('Attempting to detect question type in container with class:', container.className || container.tagName);
+                logger.debug(
+                    "Attempting to detect question type in container with class:",
+                    container.className || container.tagName
+                );
                 const mcq = this.scrapeMCQ(container);
                 if (mcq.options.length) return mcq;
                 const fill = this.scrapeFillable(container);
@@ -371,13 +374,14 @@
                 container.querySelector(".fadein") ||
                 container.querySelector(".question-text") ||
                 container;
-            logger.debug('scrapeMCQ: qNode found:', qNode);
+            logger.debug("scrapeMCQ: qNode found:", qNode);
             const questionText = this._getCleanedText(qNode);
-            logger.debug('scrapeMCQ: questionText:', questionText);
+            logger.debug("scrapeMCQ: questionText:", questionText);
             const images = this._scrapeImages(qNode);
 
             const nodes = Array.from(
-                container.querySelectorAll( // Use container.querySelectorAll here
+                container.querySelectorAll(
+                    // Use container.querySelectorAll here
                     ".row.text-left.options .question-option, .list-selection .select-item"
                 )
             );
@@ -387,13 +391,22 @@
                     if (node.matches(".question-option")) {
                         // Legacy format
                         logger.debug("Processing legacy MCQ option format.");
-                        letter = node.querySelector(".question-option-label")?.innerText.trim() || null;
-                        contentNode = node.querySelector(".question-option-content");
+                        letter =
+                            node
+                                .querySelector(".question-option-label")
+                                ?.innerText.trim() || null;
+                        contentNode = node.querySelector(
+                            ".question-option-content"
+                        );
                         text = this._getCleanedText(contentNode);
                     } else {
                         // New format for .select-item
                         logger.debug("Processing new MCQ option format.");
-                        letter = node.querySelector(".number-item")?.innerText.trim().toUpperCase() || null;
+                        letter =
+                            node
+                                .querySelector(".number-item")
+                                ?.innerText.trim()
+                                .toUpperCase() || null;
                         contentNode = node.querySelector("label");
                         text = this._getCleanedText(contentNode);
                     }
@@ -401,15 +414,13 @@
                     return {
                         letter,
                         text,
-                        images: contentNode ? this._scrapeImages(contentNode) : [],
+                        images: contentNode
+                            ? this._scrapeImages(contentNode)
+                            : [],
                         element: node,
                     };
                 })
                 .filter((o) => o.letter);
-
-            if (options.length > 0) {
-                 logger.debug(`Scraped ${options.length} MCQ options using combined selector.`);
-            }
 
             return { type: "mcq", question: questionText, options, images };
         }
@@ -427,7 +438,6 @@
                 container.querySelector(".fadein") ||
                 container.querySelector(".question-text") ||
                 container;
-            logger.debug('scrapeFillable: qNode found:', qNode);
             const inputs = Array.from(
                 container.querySelectorAll("input[type='text'], textarea")
             );
@@ -457,7 +467,6 @@
                         );
                     });
                 questionText = this._getCleanedText(clone);
-                logger.debug('scrapeFillable: questionText:', questionText);
             }
             const images = this._scrapeImages(qNode);
 
@@ -478,9 +487,7 @@
                 container.querySelector(".fadein") ||
                 container.querySelector(".question-text") ||
                 container;
-            logger.debug('scrapeTrueFalse: qNode found:', qNode);
             const questionText = this._getCleanedText(qNode);
-            logger.debug('scrapeTrueFalse: questionText:', questionText);
             const images = this._scrapeImages(qNode);
             const table = this._scrapeTable(qNode);
 
@@ -713,77 +720,66 @@
                 return false;
             }
 
-                this._simulateClick(submitButton);
-                logger.debug("Clicked submit button");
-                await new Promise((r) => setTimeout(r, 2000)); // Delay for UI change
+            this._simulateClick(submitButton);
+            logger.debug("Clicked submit button");
+            await new Promise((r) => setTimeout(r, 1000)); // Delay for UI change
 
-                // Check if the same button's text changed to "Kết thúc"
-                if ((submitButton.innerText || submitButton.value || "").trim() === "Kết thúc") {
-                    logger.info('Button text changed to "Kết thúc" after submission. Stopping solver.');
-                    if (window.hwSolver && window.hwSolver.stop) {
-                        window.hwSolver.stop();
-                    }
-                    return true;
+            const postText = (
+                submitButton.innerText ||
+                submitButton.value ||
+                ""
+            ).trim();
+            logger.info(`Post-submit button text: "${postText}"`);
+
+            // Removed "Kết thúc" button check as per user request.
+            // The question ID/number check will handle the end of the quiz.
+
+            logger.debug("Post-submit action completed.");
+            return true; // Indicate successful submission
+        }
+
+        async clickSkip() {
+            const candidates = Array.from(
+                document.querySelectorAll(
+                    'button, input[type="button"], input[type="submit"]'
+                )
+            ).filter((b) => !b.disabled);
+            const selectors = [
+                (b) => (b.innerText || b.value || "").trim() === "Bỏ qua",
+                (b) => b.matches("button.btn-gray"),
+                (b) => /skip|bỏ qua/i.test(b.innerText || b.value || ""),
+            ];
+
+            let skipButton = null;
+            for (const selector of selectors) {
+                skipButton = candidates.find(selector);
+                if (skipButton) {
+                    break;
                 }
-
-                return true; // Indicate successful submission
             }
 
-            async clickSkip() {
-                const candidates = Array.from(
-                    document.querySelectorAll(
-                        'button, input[type="button"], input[type="submit"]'
-                    )
-                ).filter((b) => !b.disabled);
-                const selectors = [
-                    (b) => (b.innerText || b.value || "").trim() === "Bỏ qua",
-                    (b) => b.matches("button.btn-gray"),
-                    (b) => /skip|bỏ qua/i.test(b.innerText || b.value || ""),
-                ];
-
-                let skipButton = null;
-                for (const selector of selectors) {
-                    skipButton = candidates.find(selector);
-                    if (skipButton) {
-                        break;
-                    }
-                }
-
-                if (!skipButton) {
-                    logger.warn("Skip button ('Bỏ qua') not found.");
-                    return false;
-                }
-
-                this._simulateClick(skipButton);
-                logger.info("Clicked skip button ('Bỏ qua').");
-                await new Promise((r) => setTimeout(r, 2000)); // Increased delay for UI change
-
-                // Check if the same button's text changed to "Kết thúc"
-                if ((skipButton.innerText || skipButton.value || "").trim() === "Kết thúc") {
-                    logger.info('Button text changed to "Kết thúc" after skip. Stopping solver.');
-                    if (window.hwSolver && window.hwSolver.stop) {
-                        window.hwSolver.stop();
-                    }
-                    return true;
-                }
-
-                return true;
+            if (!skipButton) {
+                logger.warn("Skip button ('Bỏ qua') not found.");
+                return false;
             }
 
-            checkStopButton() {
-                const ketThucButton = Array.from(
-                    document.querySelectorAll(
-                        'button, input[type="button"], input[type="submit"]'
-                    )
-                ).find((b) => (b.innerText || b.value || "").trim() === "Kết thúc");
+            this._simulateClick(skipButton);
+            logger.info("Clicked skip button ('Bỏ qua').");
+            await new Promise((r) => setTimeout(r, 2000)); // Increased delay for UI change
 
-                if (ketThucButton) {
-                    logger.info('Detected "Kết thúc" button. Stopping solver.');
-                    window.hwSolver.stop();
-                    return true; // Stop condition met
-                }
-                return false; // Stop condition not met
-            }
+            const postSkipText = (
+                skipButton.innerText ||
+                skipButton.value ||
+                ""
+            ).trim();
+            logger.info(`Post-skip button text: "${postSkipText}"`);
+
+            // Removed "Kết thúc" button check as per user request.
+            // The question ID/number check will handle the end of the quiz.
+
+            logger.debug("Post-skip action completed.");
+            return true;
+        }
     }
 
     // -------------- SCHEDULER CLASS --------------
@@ -827,11 +823,14 @@
                     // Schedule an async skip action
                     this.timer = setTimeout(async () => {
                         try {
-                            const skipped = await this.solver.skipCurrentQuestion();
+                            const skipped =
+                                await this.solver.skipCurrentQuestion();
                             if (skipped) {
                                 logger.info("Successfully skipped question.");
                             } else {
-                                logger.warn("Could not find skip button, proceeding to next question.");
+                                logger.warn(
+                                    "Could not find skip button, proceeding to next question."
+                                );
                             }
                             // Treat as success to advance
                             this._scheduleNext(true);
@@ -894,24 +893,78 @@
         async solveOnce() {
             logger.debug("Starting new solve cycle.");
 
-            // Check for "Kết thúc" button before attempting to solve any question
-            if (this.ui.checkStopButton()) {
-                return true; // Solver stopped, consider this cycle successful in terms of stopping
+            // Extract current question number and ID
+            const header = document.querySelector(".question-header");
+            let currentNum = null;
+            let currentId = null;
+            if (header) {
+                const numElement = header.querySelector(".num");
+                if (numElement) {
+                    const numText = numElement.textContent.trim();
+                    const numMatch = numText.match(/Câu:\s*(\d+)/i);
+                    if (numMatch) {
+                        currentNum = parseInt(numMatch[1], 10);
+                        logger.info(`Extracted question number: ${currentNum}`);
+                    }
+                    const idElement = header.querySelector(".num span");
+                    if (idElement) {
+                        const idText = idElement.textContent.trim();
+                        const idMatch = idText.match(/#(\d+)/);
+                        if (idMatch) {
+                            currentId = idMatch[1];
+                            logger.info(`Extracted question ID: ${currentId}`);
+                        }
+                    }
+                }
+            } // Close the if (header) block
+
+            // Check if same question as last (end of quiz)
+            if (
+                window._lastQNum !== undefined &&
+                window._lastQId !== undefined &&
+                currentNum === window._lastQNum &&
+                currentId === window._lastQId
+            ) {
+                logger.info(
+                    `Question repeated (num: ${currentNum}, ID: ${currentId}) - all questions completed. Stopping solver.`
+                );
+                this.stop();
+                return true;
             }
 
             const detected = this.scraper.detectQuestionType();
 
+            let solvedSuccess = false;
             switch (detected.type) {
                 case "mcq":
-                    return await this._solveMCQ(detected);
+                    solvedSuccess = await this._solveMCQ(detected);
+                    break;
                 case "fillable":
-                    return await this._solveFillable(detected);
+                    solvedSuccess = await this._solveFillable(detected);
+                    break;
                 case "truefalse":
-                    return await this._solveTrueFalse(detected);
+                    solvedSuccess = await this._solveTrueFalse(detected);
+                    break;
                 default:
                     logger.debug("No question detected.");
-                    return false; // Returning false signals a "failure" to the scheduler
+                    solvedSuccess = false;
+                    break;
             }
+
+            // Update last question if solved successfully
+            if (
+                solvedSuccess &&
+                currentNum !== undefined &&
+                currentId !== undefined
+            ) {
+                window._lastQNum = currentNum;
+                window._lastQId = currentId;
+                logger.info(
+                    `Updated last question to num: ${currentNum}, ID: ${currentId}`
+                );
+            }
+
+            return solvedSuccess;
         }
 
         _buildMCQPrompt(question, options) {
@@ -1189,6 +1242,31 @@
             );
             return "See console for hwSolver commands";
         },
+    };
+
+    // Add console.log override to detect completion object and stop the solver
+    const originalConsoleLog = console.log.bind(console);
+    console.log = function (...args) {
+        // Check if first arg is the completion object
+        if (
+            args.length > 0 &&
+            typeof args[0] === "object" &&
+            args[0] !== null
+        ) {
+            const obj = args[0];
+            if (obj.totalQuestionView === 20 && obj.totalQuestion === 20) {
+                logger.info(
+                    'Detected completion object {"totalQuestionView": 20, "totalQuestion": 20} in console log. Stopping solver.'
+                );
+                if (window.hwSolver && window.hwSolver.stop) {
+                    window.hwSolver.stop();
+                }
+                // Restore original console.log to avoid further interference
+                console.log = originalConsoleLog;
+            }
+        }
+        // Call original console.log
+        return originalConsoleLog.apply(console, args);
     };
 
     // Auto-start the solver. Comment this out to start manually.

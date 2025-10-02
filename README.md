@@ -112,6 +112,56 @@ Once the `solver.js` script is loaded, you can use these commands in your browse
 * **API Key Priority**: The code reads the AI key in this order:
     1. `window.__HW_SOLVER_POLL_KEY__` (injected via browser console - preferred)
     2. `process.env.HW_SOLVER_POLL_KEY` (for local Node.js environments)
+
+### Customizing API Proxy and Models
+
+If you want to use a different AI service or model, you can modify the `CONFIG` object at the top of `solver.js`. This allows flexibility to switch proxies or models while keeping the rest of the code intact.
+
+#### 1. Changing the API Proxy (PROXY_URL)
+
+* The default proxy is Pollinations.ai (`https://text.pollinations.ai/openai`), which acts as a bridge to various AI models.
+
+* To use another OpenAI-compatible proxy (e.g., your own server, Grok API, or another service):
+  * Edit `CONFIG.PROXY_URL` in `solver.js`.
+  * Example:
+
+    ```js
+    PROXY_URL: "https://your-custom-proxy.com/openai",
+    ```
+
+* **Note**: Ensure the new proxy supports the same API format (OpenAI-style chat completions). You may need to adjust headers or payload if the endpoint differs. Update `POLL_KEY` if the new service uses a different authentication method (e.g., API key in headers or query params).
+
+#### 2. Changing the AI Model (MODEL)
+
+* The default model is `deepseek-reasoning`, optimized for logical reasoning in homework questions.
+
+* To switch models:
+  * For Pollinations.ai: Edit `CONFIG.MODEL` in `solver.js`. Available models include:
+    * `deepseek-reasoning` (default: good for math/logic)
+    * `openai-reasoning` (strong general reasoning)
+    * `llama-3.1` (efficient, multilingual)
+    * `gemma-2` (fast responses)
+    * Full list: Visit [text.pollinations.ai/models](https://text.pollinations.ai/models).
+  * Example:
+
+    ```js
+    MODEL: "openai-reasoning",
+    ```
+
+* For other proxies: The `model` field in the API payload will be passed directly—check your provider's documentation for supported models (e.g., OpenAI: `gpt-4o-mini`, Anthropic: `claude-3-haiku`).
+
+* **Vision Support**: If your questions involve images, use `VISION_MODEL` (default: `openai-reasoning`) for models that handle multimodal inputs.
+
+#### 3. Key Considerations
+
+* **Compatibility**: Test changes with `hwSolver.solveOnce()` to ensure the proxy/model responds correctly. Errors may occur if the model doesn't support short, precise answers.
+
+* **Rate Limits & Costs**: Different services have varying limits. Pollinations.ai offers free tiers; others may require paid plans.
+* **Security**: Never commit your API keys to public repositories. Use environment variables or console injection as shown in the setup guide.
+* **Advanced Tweaks**: Adjust `max_tokens` (default: 64) or `temperature` (default: 0.3) in the `APIClient` class for longer/more creative responses.
+
+After editing, reload the script in your browser console to apply changes.
+
 * **Contributing**: Feel free to contribute! If you find bugs or want to add features, please open an issue or pull request.
 * **License**: This project is open-source. Please add a `LICENSE` file (MIT license is recommended) with your name before publishing or distributing.
 </nbsp>
