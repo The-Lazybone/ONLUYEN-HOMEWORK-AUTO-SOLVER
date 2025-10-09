@@ -255,10 +255,23 @@
             if (!element) return "";
             const clone = element.cloneNode(true);
             clone.querySelectorAll("mjx-container").forEach((mjx) => {
-                const ariaLabel = mjx.getAttribute("aria-label");
-                if (ariaLabel) {
-                    logger.debug("Original MathJax aria-label:", ariaLabel);
-                    let cleanedLabel = ariaLabel;
+                let mathContent = "";
+                const assistiveMml = mjx.querySelector("mjx-assistive-mml");
+                if (assistiveMml) {
+                    // Prefer assistive-mml's innerText as it often contains a more readable form
+                    mathContent = assistiveMml.innerText.trim();
+                    logger.debug("Original MathJax assistive-mml:", mathContent);
+                } else {
+                    // Fallback to aria-label if assistive-mml is not present or empty
+                    const ariaLabel = mjx.getAttribute("aria-label");
+                    if (ariaLabel) {
+                        mathContent = ariaLabel;
+                        logger.debug("Original MathJax aria-label (fallback):", ariaLabel);
+                    }
+                }
+
+                if (mathContent) {
+                    let cleanedLabel = mathContent;
 
                     // Basic essential replacements
                     cleanedLabel = cleanedLabel
@@ -330,7 +343,7 @@
                         document.createTextNode(` ${cleanedLabel} `)
                     );
                 } else {
-                    mjx.remove(); // Remove if no aria-label to avoid clutter
+                    mjx.remove(); // Remove if no relevant content found
                 }
             });
             return this._normalize(clone.innerText);
