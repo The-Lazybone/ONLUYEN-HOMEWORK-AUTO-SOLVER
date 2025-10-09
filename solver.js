@@ -117,7 +117,7 @@
                     { role: "user", content: userContent },
                 ],
                 max_tokens: 64,
-                temperature: images ? 0.3 : 1,
+                temperature: 1, // Changed to 1 as required by the model
             };
 
             // Optionally include a seed but ensure it's a safe 32-bit integer (some proxies validate this)
