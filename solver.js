@@ -256,24 +256,25 @@
             const clone = element.cloneNode(true);
             clone.querySelectorAll("mjx-container").forEach((mjx) => {
                 let mathContent = "";
+                const ariaLabel = mjx.getAttribute("aria-label");
                 const assistiveMml = mjx.querySelector("mjx-assistive-mml");
-                if (assistiveMml) {
-                    // Prefer assistive-mml's innerText as it often contains a more readable form
+
+                if (ariaLabel) {
+                    // Prefer aria-label for its semantic richness
+                    mathContent = ariaLabel;
+                    logger.debug("Original MathJax aria-label:", ariaLabel);
+                } else if (assistiveMml) {
+                    // Fallback to assistive-mml's innerText
                     mathContent = assistiveMml.innerText.trim();
-                    logger.debug("Original MathJax assistive-mml:", mathContent);
-                } else {
-                    // Fallback to aria-label if assistive-mml is not present or empty
-                    const ariaLabel = mjx.getAttribute("aria-label");
-                    if (ariaLabel) {
-                        mathContent = ariaLabel;
-                        logger.debug("Original MathJax aria-label (fallback):", ariaLabel);
-                    }
+                    logger.debug("Original MathJax assistive-mml (fallback):", mathContent);
                 }
 
                 if (mathContent) {
+                    // Remove invisible times character (U+2062) early
+                    mathContent = mathContent.replace(/\u2062/g, "");
                     let cleanedLabel = mathContent;
 
-                    // Basic essential replacements
+                    // Basic essential replacements (from previous versions)
                     cleanedLabel = cleanedLabel
                         .replace(/\bleft bracket\b/gi, "[")
                         .replace(/\bright bracket\b/gi, "]")
@@ -289,46 +290,39 @@
                         .replace(/\bmin\b/gi, "min")
                         .replace(/\bmax\b/gi, "max");
 
-                    // Powers and units
+                    // Handle "squared" and "cubed"
                     cleanedLabel = cleanedLabel
                         .replace(/squared/g, "^2")
                         .replace(/cubed/g, "^3");
 
-                    // Handle underscript/overcript
-                    cleanedLabel = cleanedLabel
-                        .replace(/Underscript\s*(.+?)\s*Endscripts/gi, "_[$1]")
-                        .replace(/Overscript\s*(.+?)\s*Endscripts/gi, "^[$1]");
+                    // Handle "to the power of X"
+                    cleanedLabel = cleanedLabel.replace(/to the power of (\d+)/gi, "^$1");
 
-                    // Handle structured fractions
-                    cleanedLabel = cleanedLabel.replace(
-                        /StartFraction (.+) Over (.+) EndFraction/g,
-                        "($1)/($2)"
-                    );
+                    // Handle "upper J", "upper K" etc. - remove "upper"
+                    cleanedLabel = cleanedLabel.replace(/\bupper\s+/gi, "");
+
+                    // Handle "degrees C" to "°C"
+                    cleanedLabel = cleanedLabel.replace(/(\d+)\s*degrees\s*C/gi, "$1°C");
+                    // Handle "o C" or "0 C" (digit zero) to "°C"
+                    cleanedLabel = cleanedLabel.replace(/(\d+)\s*(?:o|0)\s*C/gi, "$1°C");
+
+                    // Handle "period" to "."
+                    cleanedLabel = cleanedLabel.replace(/\bperiod\b/gi, ".");
+
+                    // Handle "divided by" to "/"
+                    cleanedLabel = cleanedLabel.replace(/\bdivided by\b/gi, "/");
 
                     // Convert number words to digits
                     const numberWords = [
-                        "zero",
-                        "one",
-                        "two",
-                        "three",
-                        "four",
-                        "five",
-                        "six",
-                        "seven",
-                        "eight",
-                        "nine",
-                        "ten",
-                        "eleven",
-                        "twelve",
+                        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+                        "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
+                        "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", "million"
                     ];
                     numberWords.forEach((word) => {
                         const digit = this._convertNumberWordToDigit(word);
                         if (digit !== undefined) {
                             const regex = new RegExp(`\\b${word}\\b`, "gi");
-                            cleanedLabel = cleanedLabel.replace(
-                                regex,
-                                digit.toString()
-                            );
+                            cleanedLabel = cleanedLabel.replace(regex, digit.toString());
                         }
                     });
 
@@ -337,6 +331,14 @@
                         /(\d+)\s+halves\b/gi,
                         "$1/2"
                     );
+
+                    // Specific handling for scientific notation like "3.8 times 10 to the power of 2"
+                    cleanedLabel = cleanedLabel.replace(/(\d+)\.(\d+)\s*times\s*10\^(\d+)/gi, "$1,$2 * 10^$3");
+                    cleanedLabel = cleanedLabel.replace(/(\d+),(\d+)\s*times\s*10\^(\d+)/gi, "$1,$2 * 10^$3");
+
+                    // Final pass for decimal separator: convert periods to commas in numbers, but not in units.
+                    // This regex converts periods to commas only if they are between digits and not followed by a letter.
+                    cleanedLabel = cleanedLabel.replace(/(\d+)\.(\d+)(?![a-zA-Z])/g, "$1,$2");
 
                     logger.debug("Cleaned MathJax label:", cleanedLabel);
                     mjx.replaceWith(
