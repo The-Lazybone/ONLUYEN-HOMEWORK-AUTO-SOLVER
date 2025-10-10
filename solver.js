@@ -309,6 +309,9 @@
                     // Handle "period" to "."
                     cleanedLabel = cleanedLabel.replace(/\bperiod\b/gi, ".");
 
+                    // Handle "comma" to ","
+                    cleanedLabel = cleanedLabel.replace(/\bcomma\b/gi, ",");
+
                     // Handle "divided by" to "/"
                     cleanedLabel = cleanedLabel.replace(/\bdivided by\b/gi, "/");
 
