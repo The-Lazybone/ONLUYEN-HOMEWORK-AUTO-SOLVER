@@ -20,9 +20,9 @@
             (typeof globalThis !== "undefined" &&
                 globalThis.process &&
                 globalThis.process.env &&
-                globalThis.process.env.HW_SOLVER_POLL_KEY) ||
+                globalThis.process.env.HW_SOLVER_POLL_KEY) |
             "",
-        DEFAULT_MODEL: "deepseek-reasoning", // Default model for text-only prompts
+        DEFAULT_MODEL: "openai-reasoning", // Default model for text-only prompts
         VISION_MODEL: "openai-reasoning", // Model for prompts with images
         RETRIES: 3,
         PROXY_TIMEOUT_MS: 300000,
@@ -108,6 +108,7 @@
 
             const payload = {
                 model: modelToUse,
+                "reasoning-effort": "high",
                 messages: [
                     {
                         role: "system",
@@ -315,6 +316,11 @@
                     // Handle "divided by" to "/"
                     cleanedLabel = cleanedLabel.replace(/\bdivided by\b/gi, "/");
 
+                    // Handle negative and positive to - and +
+                    cleanedLabel = cleanedLabel
+                        .replace(/\bnegative\b/gi, "-")
+                        .replace(/\bpositive\b/gi, "+");
+
                     // Convert number words to digits
                     const numberWords = [
                         "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
@@ -342,6 +348,8 @@
                     // Final pass for decimal separator: convert periods to commas in numbers, but not in units.
                     // This regex converts periods to commas only if they are between digits and not followed by a letter.
                     cleanedLabel = cleanedLabel.replace(/(\d+)\.(\d+)(?![a-zA-Z])/g, "$1,$2");
+
+                    // !CRITICAL: HANDLE EVEN MORE CASES FR
 
                     logger.debug("Cleaned MathJax label:", cleanedLabel);
                     mjx.replaceWith(
