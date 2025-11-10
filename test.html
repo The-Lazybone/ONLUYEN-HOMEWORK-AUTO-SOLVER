@@ -1,79 +1,736 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>MCQ Scraper Test</title>
-</head>
-<body>
-
-    <h1>Test Page for MCQ Scraper</h1>
-
-    <h2>Old Question Format</h2>
-    <div id="old-question-container" class="question-name">
-        <div class="fadein">
-            <p>This is a sample question in the old format.</p>
-        </div>
-        <div class="row text-left options">
-            <div class="question-option">
-                <div class="question-option-label">A</div>
-                <div class="question-option-content">Option A</div>
-            </div>
-            <div class="question-option">
-                <div class="question-option-label">B</div>
-                <div class="question-option-content">Option B</div>
-            </div>
-        </div>
-    </div>
-
-    <hr>
-
-    <h2>New Question Format</h2>
-    <div id="new-question-container">
-        <div class="fadein">
-            <div class="content">
-                <div class="text-small">This is a sample question in the new format.</div>
-            </div>
-            <div class="list-selection vertical-sort">
-                <div class="select-item">
-                    <input class="form-check-input" name="answer" type="radio" value="1">
-                    <span class="number-item">a</span>
-                    <label>Option a</label>
+<div
+    _ngcontent-ng-c3204111286=""
+    class="full-layout collapse"
+    bis_skin_checked="1"
+>
+    <div
+        _ngcontent-ng-c3204111286=""
+        class="nav-left scrollbar-hover nav-student ng-star-inserted"
+        bis_skin_checked="1"
+    >
+        <!----><app-sidebars-student
+            _ngcontent-ng-c3204111286=""
+            _nghost-ng-c372312436=""
+            class="ng-star-inserted"
+            ><div
+                _ngcontent-ng-c372312436=""
+                class="minimize-container"
+                bis_skin_checked="1"
+            >
+                <div
+                    _ngcontent-ng-c372312436=""
+                    class="logo"
+                    bis_skin_checked="1"
+                >
+                    <img
+                        _ngcontent-ng-c372312436=""
+                        src="https://app.onluyen.vn/assets/svg-v2/logo/new-logo.svg"
+                        appimgchangemode=""
+                        alt=""
+                        routerlink="./"
+                        tabindex="0"
+                        class="ng-star-inserted"
+                    /><!----><!----><i
+                        _ngcontent-ng-c372312436=""
+                        class="fa fa-times close-nav d-none"
+                    ></i>
                 </div>
-                <div class="select-item">
-                    <input class="form-check-input" name="answer" type="radio" value="2">
-                    <span class="number-item">b</span>
-                    <label>Option b</label>
+                <div
+                    _ngcontent-ng-c372312436=""
+                    class="logo-mini"
+                    bis_skin_checked="1"
+                >
+                    <img
+                        _ngcontent-ng-c372312436=""
+                        src="https://app.onluyen.vn/assets/svg-v2/logo/new-logo-mini.svg"
+                        appimgchangemode=""
+                        alt=""
+                        routerlink="./"
+                        tabindex="0"
+                    />
                 </div>
-            </div>
-        </div>
+                <div
+                    _ngcontent-ng-c372312436=""
+                    class="content"
+                    bis_skin_checked="1"
+                >
+                    <app-sidebar-nav-student
+                        _ngcontent-ng-c372312436=""
+                        _nghost-ng-c3160802032=""
+                        ><div
+                            _ngcontent-ng-c3160802032=""
+                            class="sidebar-container"
+                            bis_skin_checked="1"
+                        >
+                            <div
+                                _ngcontent-ng-c3160802032=""
+                                class="item-features"
+                                bis_skin_checked="1"
+                            >
+                                <div
+                                    _ngcontent-ng-c3160802032=""
+                                    class="list-features"
+                                    bis_skin_checked="1"
+                                >
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        routerlinkactive="active"
+                                        class="feature ripple ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/home.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Trang chủ</span
+                                        ><!---->
+                                    </div>
+                                    <!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        routerlinkactive="active"
+                                        class="feature ripple ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/assignment-student.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Lớp học số</span
+                                        ><i
+                                            _ngcontent-ng-c3160802032=""
+                                            aria-hidden="true"
+                                            class="fa fa-caret-right ng-star-inserted"
+                                        ></i
+                                        ><!---->
+                                    </div>
+                                    <!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        routerlinkactive="active"
+                                        class="feature ripple ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/btvn.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Bài tập</span
+                                        ><!---->
+                                    </div>
+                                    <!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        routerlinkactive="active"
+                                        class="feature ripple ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/sefl-learning.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Tự học</span
+                                        ><i
+                                            _ngcontent-ng-c3160802032=""
+                                            aria-hidden="true"
+                                            class="fa fa-caret-right ng-star-inserted"
+                                        ></i
+                                        ><!---->
+                                    </div>
+                                    <!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        routerlinkactive="active"
+                                        class="feature ripple ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/plus.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Ôn luyện Plus</span
+                                        ><!---->
+                                    </div>
+                                    <!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        routerlinkactive="active"
+                                        class="feature ripple ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/exam-student.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Cuộc thi</span
+                                        ><!---->
+                                    </div>
+                                    <!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        routerlinkactive="active"
+                                        class="feature ripple ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/ai-convo.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >AI Convo</span
+                                        ><!---->
+                                    </div>
+                                    <!----><!----><!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        class="border-bottom-feature"
+                                        bis_skin_checked="1"
+                                    ></div>
+                                </div>
+                                <div
+                                    _ngcontent-ng-c3160802032=""
+                                    class="list-features features-bottom"
+                                    bis_skin_checked="1"
+                                >
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        approle=""
+                                        routerlinkactive="active"
+                                        class="feature ripple fadeindown ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/mastery-student.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Tiến trình học tập</span
+                                        >
+                                    </div>
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        approle=""
+                                        routerlinkactive="active"
+                                        class="feature ripple fadeindown ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/password-code.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Mã kích hoạt</span
+                                        >
+                                    </div>
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        approle=""
+                                        routerlinkactive="active"
+                                        class="feature ripple fadeindown ng-star-inserted"
+                                        tabindex="0"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="img-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <img
+                                                _ngcontent-ng-c3160802032=""
+                                                alt=""
+                                                class="normal-img"
+                                                src="/assets/svg-v3/nav-bar/help.svg"
+                                            />
+                                        </div>
+                                        <span _ngcontent-ng-c3160802032=""
+                                            >Hướng dẫn &amp; Hỗ trợ</span
+                                        >
+                                    </div>
+                                    <!----><!----><!----><!---->
+                                    <div
+                                        _ngcontent-ng-c3160802032=""
+                                        class="user"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            _ngcontent-ng-c3160802032=""
+                                            class="feature ripple user-feature"
+                                            bis_skin_checked="1"
+                                        >
+                                            <div
+                                                _ngcontent-ng-c3160802032=""
+                                                class="left-user"
+                                                bis_skin_checked="1"
+                                            >
+                                                <div
+                                                    _ngcontent-ng-c3160802032=""
+                                                    class="avatar-feature"
+                                                    bis_skin_checked="1"
+                                                >
+                                                    <ngx-avatars
+                                                        _ngcontent-ng-c3160802032=""
+                                                        size="42"
+                                                        class="ng-avatar ng-star-inserted"
+                                                        _nghost-ng-c3499813846=""
+                                                        ><div
+                                                            _ngcontent-ng-c3499813846=""
+                                                            class="avatar-container"
+                                                            style="
+                                                                width: 42px;
+                                                                height: 42px;
+                                                            "
+                                                            bis_skin_checked="1"
+                                                        >
+                                                            <div
+                                                                _ngcontent-ng-c3499813846=""
+                                                                class="avatar-content ng-star-inserted"
+                                                                style="
+                                                                    text-align: center;
+                                                                    border-radius: 100%;
+                                                                    text-transform: uppercase;
+                                                                    color: rgb(
+                                                                        255,
+                                                                        255,
+                                                                        255
+                                                                    );
+                                                                    background-color: rgb(
+                                                                        52,
+                                                                        152,
+                                                                        219
+                                                                    );
+                                                                    font: 14px /
+                                                                            42px
+                                                                            Helvetica,
+                                                                        Arial,
+                                                                        sans-serif;
+                                                                    cursor: pointer;
+                                                                "
+                                                                bis_skin_checked="1"
+                                                            >
+                                                                NCA
+                                                            </div>
+                                                            <!----><!----><!---->
+                                                        </div></ngx-avatars
+                                                    ><!----><!---->
+                                                </div>
+                                                <div
+                                                    _ngcontent-ng-c3160802032=""
+                                                    class="info-user"
+                                                    bis_skin_checked="1"
+                                                >
+                                                    <div
+                                                        _ngcontent-ng-c3160802032=""
+                                                        class="display-name"
+                                                        bis_skin_checked="1"
+                                                    >
+                                                        Nguyễn Công Anh
+                                                    </div>
+                                                    <div
+                                                        _ngcontent-ng-c3160802032=""
+                                                        class="user-name"
+                                                        bis_skin_checked="1"
+                                                    >
+                                                        anhnc36@haiphong.edu.vn
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <i
+                                                _ngcontent-ng-c3160802032=""
+                                                aria-hidden="true"
+                                                class="fa fa-caret-right"
+                                            ></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div></div
+                    ></app-sidebar-nav-student>
+                </div></div></app-sidebars-student
+        ><!----><!----><!----><!----><!---->
     </div>
-
-    <script src="solver.js"></script>
-    <script>
-        // Test script
-        console.log("Test page loaded. Running manual scrape test...");
-        console.log("Value of window.hwSolver:", window.hwSolver);
-
-        if (window.hwSolver && window.hwSolver.scraper) {
-            window.hwSolver.stop(); // Ensure scheduler is stopped
-            try {
-                console.log("--- Testing Old Question Format ---");
-                const oldContainer = document.getElementById('old-question-container');
-                const oldDetected = window.hwSolver.scraper.scrapeMCQ(oldContainer);
-                console.log("Scraped Old Data:", oldDetected);
-
-                console.log("--- Testing New Question Format ---");
-                const newContainer = document.getElementById('new-question-container');
-                const newDetected = window.hwSolver.scraper.scrapeMCQ(newContainer);
-                console.log("Scraped New Data:", newDetected);
-
-            } catch (e) {
-                console.error("Error during manual scrape:", e);
-                console.error("Error stack:", e.stack);
-            }
-        } else {
-            console.error("window.hwSolver or window.hwSolver.scraper is not defined.");
-        }
-    </script>
-
-</body>
-</html>
+    <!---->
+    <div
+        _ngcontent-ng-c3204111286=""
+        id="page-scroll"
+        class="page full-page"
+        bis_skin_checked="1"
+    >
+        <!---->
+        <div
+            _ngcontent-ng-c3204111286=""
+            class="ng-star-inserted"
+            bis_skin_checked="1"
+        >
+            <!---->
+        </div>
+        <!----><router-outlet _ngcontent-ng-c3204111286=""></router-outlet
+        ><ng-component _nghost-ng-c4253298042="" class="ng-star-inserted"
+            ><router-outlet _ngcontent-ng-c4253298042=""></router-outlet
+            ><app-school-test-full-layout
+                _nghost-ng-c421389385=""
+                class="ng-star-inserted"
+                ><router-outlet _ngcontent-ng-c421389385=""></router-outlet
+                ><ng-component class="ng-star-inserted"
+                    ><div class="ng-star-inserted" bis_skin_checked="1">
+                        <app-test-school-step-header _nghost-ng-c2682375177=""
+                            ><div
+                                _ngcontent-ng-c2682375177=""
+                                class="header"
+                                bis_skin_checked="1"
+                            >
+                                <div
+                                    _ngcontent-ng-c2682375177=""
+                                    class="header-hidden hidden-xs-down"
+                                    bis_skin_checked="1"
+                                ></div>
+                                <div
+                                    _ngcontent-ng-c2682375177=""
+                                    class="header-content cf"
+                                    bis_skin_checked="1"
+                                >
+                                    <!---->
+                                    <div
+                                        _ngcontent-ng-c2682375177=""
+                                        class="header-title"
+                                        bis_skin_checked="1"
+                                    >
+                                        Hạn nộp: 23:55 15/11/2025
+                                        <!----><!---->
+                                    </div>
+                                    <div
+                                        _ngcontent-ng-c2682375177=""
+                                        class="pause"
+                                        bis_skin_checked="1"
+                                    >
+                                        <!---->
+                                        <div
+                                            _ngcontent-ng-c2682375177=""
+                                            class="pause-icon ng-star-inserted"
+                                            bis_skin_checked="1"
+                                        >
+                                            <svg
+                                                _ngcontent-ng-c2682375177=""
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="currentColor"
+                                                preserveAspectRatio="xMidYMid meet"
+                                                height="9"
+                                                width="8"
+                                                viewBox="0 0 8 9"
+                                            >
+                                                <g
+                                                    _ngcontent-ng-c2682375177=""
+                                                    transform="translate(-11 -11)"
+                                                    fill="none"
+                                                    fill-rule="evenodd"
+                                                >
+                                                    <circle
+                                                        _ngcontent-ng-c2682375177=""
+                                                        stroke="#E4E5E7"
+                                                        cx="15"
+                                                        cy="15"
+                                                        r="15"
+                                                    ></circle>
+                                                    <g
+                                                        _ngcontent-ng-c2682375177=""
+                                                        transform="translate(11 11)"
+                                                        fill="#fff"
+                                                    >
+                                                        <rect
+                                                            _ngcontent-ng-c2682375177=""
+                                                            width="3"
+                                                            height="8.5"
+                                                            rx="1"
+                                                        ></rect>
+                                                        <rect
+                                                            _ngcontent-ng-c2682375177=""
+                                                            x="5"
+                                                            width="3"
+                                                            height="8.5"
+                                                            rx="1"
+                                                        ></rect>
+                                                    </g>
+                                                </g></svg
+                                            ><span _ngcontent-ng-c2682375177=""
+                                                >Nộp bài</span
+                                            >
+                                        </div>
+                                        <!---->
+                                    </div>
+                                </div>
+                            </div></app-test-school-step-header
+                        ><app-test-school-step-data-pdf
+                            ><div class="pdf-test" bis_skin_checked="1">
+                                <div class="pdf-sidebar" bis_skin_checked="1">
+                                    <div
+                                        class="answer-header text-center"
+                                        bis_skin_checked="1"
+                                    >
+                                        Phiếu trả lời
+                                    </div>
+                                    <div
+                                        class="answer-note"
+                                        bis_skin_checked="1"
+                                    >
+                                        Click vào câu hỏi sau đó chọn đáp án
+                                    </div>
+                                    <div
+                                        class="list-question scroll-ques"
+                                        bis_skin_checked="1"
+                                    >
+                                        <span class="ng-star-inserted selected">
+                                            1<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            2<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            3<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            4<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            5<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            6<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            7<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            8<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            9<!----><!----></span
+                                        ><span class="ng-star-inserted">
+                                            10<!----><!----></span
+                                        ><!---->
+                                    </div>
+                                    <div
+                                        class="answer-header text-center"
+                                        bis_skin_checked="1"
+                                    >
+                                        Đáp án
+                                    </div>
+                                    <div
+                                        class="ng-star-inserted"
+                                        bis_skin_checked="1"
+                                    >
+                                        <div
+                                            class="list-answer ng-star-inserted"
+                                            bis_skin_checked="1"
+                                        >
+                                            <span
+                                                class="ng-star-inserted"
+                                                style=""
+                                                >A</span
+                                            ><span
+                                                class="ng-star-inserted"
+                                                style=""
+                                                >B</span
+                                            ><span
+                                                class="ng-star-inserted"
+                                                style=""
+                                                >C</span
+                                            ><span
+                                                class="ng-star-inserted"
+                                                style=""
+                                                >D</span
+                                            ><!---->
+                                        </div>
+                                        <!----><!---->
+                                    </div>
+                                    <!---->
+                                </div>
+                                <div class="pdf-content" bis_skin_checked="1">
+                                    <div
+                                        class="pdf-resize"
+                                        bis_skin_checked="1"
+                                    >
+                                        <ng2-pdfjs-viewer
+                                            locale="vi-VN"
+                                            pagemode="none"
+                                            _nghost-ng-c1338451189=""
+                                            class="ng-star-inserted"
+                                            ><div
+                                                _ngcontent-ng-c1338451189=""
+                                                class="pdfjs-container"
+                                                bis_skin_checked="1"
+                                            >
+                                                <div
+                                                    _ngcontent-ng-c1338451189=""
+                                                    class="loadingSpin"
+                                                    bis_skin_checked="1"
+                                                >
+                                                    <div
+                                                        _ngcontent-ng-c1338451189=""
+                                                        class="loader"
+                                                        bis_skin_checked="1"
+                                                    ></div>
+                                                </div>
+                                                <div
+                                                    _ngcontent-ng-c1338451189=""
+                                                    class="iframe-container"
+                                                    style="display: none"
+                                                    bis_skin_checked="1"
+                                                >
+                                                    <div
+                                                        _ngcontent-ng-c1338451189=""
+                                                        class="toolbar"
+                                                        bis_skin_checked="1"
+                                                    >
+                                                        <div
+                                                            _ngcontent-ng-c1338451189=""
+                                                            id="toolbarContainer"
+                                                            bis_skin_checked="1"
+                                                        >
+                                                            <div
+                                                                _ngcontent-ng-c1338451189=""
+                                                                id="toolbarViewer"
+                                                                bis_skin_checked="1"
+                                                            >
+                                                                <button
+                                                                    _ngcontent-ng-c1338451189=""
+                                                                    id="download"
+                                                                    title="Download"
+                                                                    tabindex="34"
+                                                                    data-l10n-id="download"
+                                                                    class="toolbarButton download"
+                                                                >
+                                                                    <img
+                                                                        _ngcontent-ng-c1338451189=""
+                                                                        src="/assets/pdfjs/web/images/toolbarButton-download.png"
+                                                                        alt="Download"
+                                                                    /></button
+                                                                ><!---->
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <iframe
+                                                        _ngcontent-ng-c1338451189=""
+                                                        id="iframeDocx"
+                                                        title="ng2-pdfjs-viewer"
+                                                        width="100%"
+                                                    ></iframe>
+                                                </div>
+                                                <iframe
+                                                    _ngcontent-ng-c1338451189=""
+                                                    id="iframePDF"
+                                                    title="ng2-pdfjs-viewer"
+                                                    width="100%"
+                                                    height="100%"
+                                                    src="assets/pdfjs/web/viewer.html?file=https%3A%2F%2Fpremade.onluyen.vn%2Fassignment%2Fconfig%2F655%2F20251110%2F6911ef4abb51641fe5717a76.pdf&amp;t=1762813494806&amp;beforePrint=true&amp;afterPrint=true&amp;pagesLoaded=true&amp;pageChange=true&amp;openFile=false&amp;download=false&amp;viewBookmark=false&amp;print=false&amp;fullScreen=false&amp;find=true&amp;locale=vi-VN#&amp;pagemode=none&amp;errorMessage=undefined&amp;errorAppend=true"
+                                                ></iframe></div></ng2-pdfjs-viewer
+                                        ><!---->
+                                    </div>
+                                </div>
+                            </div>
+                            <app-popup-confirm _nghost-ng-c2822355967=""
+                                ><!----></app-popup-confirm
+                            ></app-test-school-step-data-pdf
+                        >
+                    </div>
+                    <!----><!----><app-test-school-step-loading-gif
+                        _nghost-ng-c2944914487=""
+                        ><!----></app-test-school-step-loading-gif
+                    ><!----><app-school-result-complete
+                        ><!----></app-school-result-complete
+                    ><app-question-report _nghost-ng-c3004002035=""
+                        ><form
+                            _ngcontent-ng-c3004002035=""
+                            novalidate=""
+                            class="ng-untouched ng-pristine ng-invalid"
+                        >
+                            <!---->
+                        </form>
+                        <!----></app-question-report
+                    ><app-question-popup-comment
+                        ><!----></app-question-popup-comment
+                    ><app-modal _nghost-ng-c843435007=""><!----></app-modal
+                    ><app-test-auto-submit-popup _nghost-ng-c1417439529=""
+                        ><!----></app-test-auto-submit-popup
+                    ></ng-component
+                ><!----></app-school-test-full-layout
+            ><!----></ng-component
+        ><!---->
+    </div>
+</div>

@@ -271,89 +271,9 @@
                 }
 
                 if (mathContent) {
-                    // Remove invisible times character (U+2062) early
-                    mathContent = mathContent.replace(/\u2062/g, "");
-                    let cleanedLabel = mathContent;
-
-                    // Basic essential replacements (from previous versions)
-                    cleanedLabel = cleanedLabel
-                        .replace(/\bleft bracket\b/gi, "[")
-                        .replace(/\bright bracket\b/gi, "]")
-                        .replace(/\bleft parenthesis\b/gi, "(")
-                        .replace(/\bright parenthesis\b/gi, ")")
-                        .replace(/\bsemicolon\b/gi, ";")
-                        .replace(/\bequals\b/gi, "=")
-                        .replace(/\bplus\b/gi, "+")
-                        .replace(/\bminus\b/gi, "-")
-                        .replace(/\btimes\b/gi, "*")
-                        .replace(/\bdivided by\b/gi, "/")
-                        .replace(/\binfinity\b/gi, "∞")
-                        .replace(/\bmin\b/gi, "min")
-                        .replace(/\bmax\b/gi, "max");
-
-                    // Handle "squared" and "cubed"
-                    cleanedLabel = cleanedLabel
-                        .replace(/squared/g, "^2")
-                        .replace(/cubed/g, "^3");
-
-                    // Handle "to the power of X"
-                    cleanedLabel = cleanedLabel.replace(/to the power of (\d+)/gi, "^$1");
-
-                    // Handle "upper J", "upper K" etc. - remove "upper"
-                    cleanedLabel = cleanedLabel.replace(/\bupper\s+/gi, "");
-
-                    // Handle "degrees C" to "°C"
-                    cleanedLabel = cleanedLabel.replace(/(\d+)\s*degrees\s*C/gi, "$1°C");
-                    // Handle "o C" or "0 C" (digit zero) to "°C"
-                    cleanedLabel = cleanedLabel.replace(/(\d+)\s*(?:o|0)\s*C/gi, "$1°C");
-
-                    // Handle "period" to "."
-                    cleanedLabel = cleanedLabel.replace(/\bperiod\b/gi, ".");
-
-                    // Handle "comma" to ","
-                    cleanedLabel = cleanedLabel.replace(/\bcomma\b/gi, ",");
-
-                    // Handle "divided by" to "/"
-                    cleanedLabel = cleanedLabel.replace(/\bdivided by\b/gi, "/");
-
-                    // Handle negative and positive to - and +
-                    cleanedLabel = cleanedLabel
-                        .replace(/\bnegative\b/gi, "-")
-                        .replace(/\bpositive\b/gi, "+");
-
-                    // Convert number words to digits
-                    const numberWords = [
-                        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
-                        "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
-                        "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety", "hundred", "thousand", "million"
-                    ];
-                    numberWords.forEach((word) => {
-                        const digit = this._convertNumberWordToDigit(word);
-                        if (digit !== undefined) {
-                            const regex = new RegExp(`\\b${word}\\b`, "gi");
-                            cleanedLabel = cleanedLabel.replace(regex, digit.toString());
-                        }
-                    });
-
-                    // Handle basic fraction words (e.g., "3 halves")
-                    cleanedLabel = cleanedLabel.replace(
-                        /(\d+)\s+halves\b/gi,
-                        "$1/2"
-                    );
-
-                    // Specific handling for scientific notation like "3.8 times 10 to the power of 2"
-                    cleanedLabel = cleanedLabel.replace(/(\d+)\.(\d+)\s*times\s*10\^(\d+)/gi, "$1,$2 * 10^$3");
-                    cleanedLabel = cleanedLabel.replace(/(\d+),(\d+)\s*times\s*10\^(\d+)/gi, "$1,$2 * 10^$3");
-
-                    // Final pass for decimal separator: convert periods to commas in numbers, but not in units.
-                    // This regex converts periods to commas only if they are between digits and not followed by a letter.
-                    cleanedLabel = cleanedLabel.replace(/(\d+)\.(\d+)(?![a-zA-Z])/g, "$1,$2");
-
-                    // !CRITICAL: HANDLE EVEN MORE CASES FR
-
-                    logger.debug("Cleaned MathJax label:", cleanedLabel);
+                    // Wrap raw MathJax content in special markers for the LLM
                     mjx.replaceWith(
-                        document.createTextNode(` ${cleanedLabel} `)
+                        document.createTextNode(` [MATHJAX]${mathContent}[/MATHJAX] `)
                     );
                 } else {
                     mjx.remove(); // Remove if no relevant content found
@@ -999,7 +919,7 @@
                 : "";
             let p =
                 thinkPrefix +
-                "You are a homework solver. Even if you are unsure or the question is ambiguous, provide your best guess by selecting one letter. Always reply with exactly one uppercase letter: A, B, C or D — nothing else, no explanations or refusals.\n\n";
+                "You are a homework solver. Mathematical formulas and symbols are enclosed in [MATHJAX]...[/MATHJAX] tags. Interpret the content within these tags as mathematical expressions. Even if you are unsure or the question is ambiguous, provide your best guess by selecting one letter. Always reply with exactly one uppercase letter: A, B, C or D — nothing else, no explanations or refusals.\n\n";
             p += `Question:\n${question}\n\nChoices:\n`;
             options.forEach((opt) => {
                 p += `${opt.letter}. ${opt.text}\n`;
@@ -1014,7 +934,7 @@
                 : "";
             return (
                 thinkPrefix +
-                `You are a homework solver. If the question is in another language, translate it to English first and then solve it step by step. Fill the blank(s) with short phrase(s) or word(s) or a number. For numerical answers, use a comma (,) as the decimal separator. Even if you are unsure or lack complete information, provide your best guess or approximation as a short phrase, word, or number. Never leave the answer blank or refuse—always fill it in. Format the answer concisely, starting with the key numerical value or phrase if applicable. Reply only with the short answer (numerical if possible), with no prefixes or suffixes. \n\nQuestion:\n${question}`
+                `You are a homework solver. Mathematical formulas and symbols are enclosed in [MATHJAX]...[/MATHJAX] tags. Interpret the content within these tags as mathematical expressions. If the question is in another language, translate it to English first and then solve it step by step. Fill the blank(s) with short phrase(s) or word(s) or a number. For numerical answers, use a comma (,) as the decimal separator. Even if you are unsure or lack complete information, provide your best guess or approximation as a short phrase, word, or number. Never leave the answer blank or refuse—always fill it in. Format the answer concisely, starting with the key numerical value or phrase if applicable. Reply only with the short answer (numerical if possible), with no prefixes or suffixes. \n\nQuestion:\n${question}`
             );
         }
 
@@ -1024,7 +944,7 @@
                 : "";
             let p =
                 thinkPrefix +
-                'You are a homework solver. For each sub-question, reply with "TRUE" or "FALSE" only, separated by commas. Example: TRUE,FALSE,TRUE,TRUE\n\n';
+                'You are a homework solver. Mathematical formulas and symbols are enclosed in [MATHJAX]...[/MATHJAX] tags. Interpret the content within these tags as mathematical expressions. For each sub-question, reply with "TRUE" or "FALSE" only, separated by commas. Example: TRUE,FALSE,TRUE,TRUE\n\n';
             p += `Main Question:\n${question}\n\n`;
             if (table) {
                 p += `Table Data:\n${table}\n\n`;
