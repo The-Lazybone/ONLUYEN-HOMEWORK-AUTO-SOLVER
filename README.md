@@ -9,7 +9,7 @@ It's designed to be flexible, but you might need to adjust it slightly for diffe
 
 This project uses the Pollinations AI proxy to connect to powerful AI models. You'll need a key to use their service.
 
-* **Where to get it**: Request a free key at [auth.pollinations.ai](https://auth.pollinations.ai).
+* **Where to get it**: Request a free secret key at [enter.pollinations.ai](https://enter.pollinations.ai).
 * **Keep it private**: Treat your AI key like a password. Don't share it or put it in public code.
 </nbsp>
 
@@ -119,29 +119,24 @@ If you want to use a different AI service or model, you can modify the `CONFIG` 
 
 #### 1. Changing the API Proxy (PROXY_URL)
 
-* The default proxy is Pollinations.ai (`https://text.pollinations.ai/openai`), which acts as a bridge to various AI models.
+* The default proxy is Pollinations.ai (`https://gen.pollinations.ai/v1/chat/completion`), which acts as a bridge to various AI models.
 
 * To use another OpenAI-compatible proxy (e.g., your own server, Grok API, or another service):
   * Edit `CONFIG.PROXY_URL` in `solver.js`.
   * Example:
 
     ```js
-    PROXY_URL: "https://your-custom-proxy.com/openai",
+    PROXY_URL: "https://your-custom-proxy.com/...",
     ```
 
 * **Note**: Ensure the new proxy supports the same API format (OpenAI-style chat completions). You may need to adjust headers or payload if the endpoint differs. Update `POLL_KEY` if the new service uses a different authentication method (e.g., API key in headers or query params).
 
 #### 2. Changing the AI Model (MODEL)
 
-* The default model is `deepseek-reasoning`, optimized for logical reasoning in homework questions.
+* The default model is `kimi-k2-thinking` for no image questions and `openai-reasoning` vice versa, optimized for logical reasoning in homework questions.
 
 * To switch models:
-  * For Pollinations.ai: Edit `CONFIG.MODEL` in `solver.js`. Available models include:
-    * `deepseek-reasoning` (default: good for math/logic)
-    * `openai-reasoning` (strong general reasoning)
-    * `llama-3.1` (efficient, multilingual)
-    * `gemma-2` (fast responses)
-    * Full list: Visit [text.pollinations.ai/models](https://text.pollinations.ai/models).
+  * For Pollinations.ai: Edit `CONFIG.MODEL` in `solver.js`. Available models (in json format) include in this link [gen.pollinations.ai/models](https://gen.pollinations.ai/models).
   * Example:
 
     ```js
@@ -155,15 +150,13 @@ If you want to use a different AI service or model, you can modify the `CONFIG` 
 #### 3. Key Considerations
 
 * **Compatibility**: Test changes with `hwSolver.solveOnce()` to ensure the proxy/model responds correctly. Errors may occur if the model doesn't support short, precise answers.
-
-* **Rate Limits & Costs**: Different services have varying limits. Pollinations.ai offers free tiers; others may require paid plans.
+* **Rate Limits & Costs**: Different services have varying limits. Pollinations.ai offers free tiers (with limited usages per days of course); others may require paid plans.
 * **Security**: Never commit your API keys to public repositories. Use environment variables or console injection as shown in the setup guide.
 * **Advanced Tweaks**: Adjust `max_tokens` (default: 64) or `temperature` (default: 0.3) in the `APIClient` class for longer/more creative responses.
 
 After editing, reload the script in your browser console to apply changes.
 
 * **Contributing**: Feel free to contribute! If you find bugs or want to add features, please open an issue or pull request.
-* **License**: This project is open-source. Please add a `LICENSE` file (MIT license is recommended) with your name before publishing or distributing.
 </nbsp>
 
 ## Credits
