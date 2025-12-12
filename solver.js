@@ -160,7 +160,7 @@
                         },
                         { role: "user", content: userContent },
                     ],
-                    max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 128000 : 64,
+                    max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 100000 : 64,
                     temperature: 1, // Changed to 1 as required by the model
                     tools: tools,
                     tool_choice: "auto"
