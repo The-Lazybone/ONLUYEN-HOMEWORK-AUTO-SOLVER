@@ -189,7 +189,7 @@
                 max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 65535 : 64,
                 thinking: {
                     type: CONFIG.THINK_BEFORE_ANSWER ? "enabled" : "disabled",
-                    budget_tokens: 65535,
+                    budget_tokens: 128000,
                 },
                 temperature: 1, // Changed to 1 as required by the model
                 tools: tools,
