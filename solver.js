@@ -21,8 +21,8 @@
                 globalThis.process &&
                 globalThis.process.env &&
                 globalThis.process.env.HW_SOLVER_POLL_KEY) | "",
-        DEFAULT_MODEL: "gemini-search", // Default model for text-only prompts
-        VISION_MODEL: "gemini-search", // Model for prompts with images
+        DEFAULT_MODEL: "gemini", // Default model for text-only prompts
+        VISION_MODEL: "gemini", // Model for prompts with images
         RETRIES: 3,
         PROXY_TIMEOUT_MS: 300000,
         LOOP_INTERVAL_MS: 4000,
