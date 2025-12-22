@@ -21,8 +21,8 @@
                 globalThis.process &&
                 globalThis.process.env &&
                 globalThis.process.env.HW_SOLVER_POLL_KEY) | "",
-        DEFAULT_MODEL: "kimi-k2-thinking", // Default model for text-only prompts
-        VISION_MODEL: "openai-reasoning", // Model for prompts with images
+        DEFAULT_MODEL: "gemini-search", // Default model for text-only prompts
+        VISION_MODEL: "gemini-search", // Model for prompts with images
         RETRIES: 3,
         PROXY_TIMEOUT_MS: 300000,
         LOOP_INTERVAL_MS: 4000,
@@ -176,8 +176,8 @@
                 reasoning_effort: CONFIG.THINK_BEFORE_ANSWER
                     ? "high"
                     : CONFIG.INSTANT_MODE
-                    ? "minimal"
-                    : "low",
+                    ? "low"
+                    : "medium",
                 messages: [
                     {
                         role: "system",
@@ -186,7 +186,11 @@
                     },
                     { role: "user", content: userContent },
                 ],
-                max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 100000 : 64,
+                max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 65535 : 64,
+                thinking: {
+                    type: CONFIG.THINK_BEFORE_ANSWER ? "enabled" : "disabled",
+                    budget_tokens: 65535,
+                },
                 temperature: 1, // Changed to 1 as required by the model
                 tools: tools,
                 tool_choice: "auto",
