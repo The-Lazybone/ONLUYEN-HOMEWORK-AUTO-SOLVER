@@ -412,29 +412,55 @@
             if (!container)
                 return { type: "mcq", question: "", options: [], images: [] };
 
-            const qNode =
-                container.querySelector(".fadein") ||
-                container.querySelector(".question-text") ||
-                container;
-            logger.debug("scrapeMCQ: qNode found:", qNode);
-            let questionText = this._getCleanedText(qNode);
+            let questionParts = [];
 
-            // Targeted Fix: Check for .title in qNode OR container
-            let titleNode = qNode.querySelector(".title");
-            if (!titleNode) {
-                // Fallback: Check strictly in container if not found in qNode
-                titleNode = container.querySelector(".title");
+            // 1. Look for explicit header/content blocks
+            const headerNode = container.querySelector(".question-text");
+            if (headerNode) {
+                const headerText = this._getCleanedText(headerNode);
+                if (headerText) questionParts.push(headerText);
             }
 
+            const nameNode = container.querySelector(".question-name");
+            if (nameNode) {
+                const nameText = this._getCleanedText(nameNode);
+                if (nameText) questionParts.push(nameText);
+            }
+
+            // 2. Look for .title (e.g. "Blank numbered (1)")
+            const titleNode = container.querySelector(".title");
             if (titleNode) {
                 const titleText = this._getCleanedText(titleNode);
-                if (titleText && !questionText.includes(titleText)) {
-                    questionText = titleText + "\n" + questionText;
+                if (
+                    titleText &&
+                    !questionParts.some((p) => p.includes(titleText))
+                ) {
+                    questionParts.push(titleText);
                 }
             }
 
+            // 3. Fallback if no specific nodes found
+            if (questionParts.length === 0) {
+                const qNode = container.querySelector(".fadein") || container;
+                questionParts.push(this._getCleanedText(qNode));
+            }
+
+            // Unique and trim
+            const questionText = [...new Set(questionParts)]
+                .join("\n\n")
+                .trim();
             logger.debug("scrapeMCQ: questionText:", questionText);
-            const images = this._scrapeImages(qNode);
+
+            // Images from both main text areas
+            const images = [
+                ...this._scrapeImages(
+                    container.querySelector(".question-text")
+                ),
+                ...this._scrapeImages(
+                    container.querySelector(".question-name")
+                ),
+            ];
+            const uniqueImages = [...new Set(images)];
 
             const nodes = Array.from(
                 container.querySelectorAll(
@@ -479,7 +505,12 @@
                 })
                 .filter((o) => o.letter);
 
-            return { type: "mcq", question: questionText, options, images };
+            return {
+                type: "mcq",
+                question: questionText,
+                options,
+                images: uniqueImages,
+            };
         }
 
         scrapeFillable(container) {
