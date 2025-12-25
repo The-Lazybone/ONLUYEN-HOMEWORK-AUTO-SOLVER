@@ -380,9 +380,15 @@
 
         _scrapeImages(container) {
             if (!container) return [];
-            return Array.from(container.querySelectorAll("img")).map(
-                (img) => img.src
-            );
+            return Array.from(container.querySelectorAll("img"))
+                .map((img) => {
+                    // Only scrape if the image is actually loaded and visible
+                    if (img.complete && img.naturalWidth > 0) {
+                        return img.src;
+                    }
+                    return null;
+                })
+                .filter((src) => src !== null);
         }
 
         _scrapeTable(container) {
