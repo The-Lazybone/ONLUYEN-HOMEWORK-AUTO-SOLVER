@@ -1,164 +1,94 @@
-# 🚀 AI Homework Solver for Web Pages
+# 🚀 Intelligent AI Homework Solver (v2.0)
 
-This tool helps you automatically answer homework questions on websites like `onluyen.vn` using Artificial Intelligence. It works by reading the questions from the webpage, sending them to an AI, and then automatically filling in or selecting the answers for you.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Dynamic DOM](https://img.shields.io/badge/DOM-Adaptive-blueviolet)](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model)
+[![AI Powered](https://img.shields.io/badge/AI-Reasoning--Driven-orange)](https://pollinations.ai)
 
-It's designed to be flexible, but you might need to adjust it slightly for different websites.
-</nbsp>
+An advanced, agentic browser automation tool engineered to solve complex academic problems on interactive platforms like `onluyen.vn`. Built with a focus on **DOM resilience**, **mathematical precision**, and **multimodal AI integration**.
 
-## 🔑 Get Your Free AI Key
+## ✨ Key Features
 
-This project uses the Pollinations AI proxy to connect to powerful AI models. You'll need a key to use their service.
+*   **🧠 Logic-First Reasoning**: Uses specialized reasoning models (DeepSeek, OpenAI) to solve problems step-by-step before delivering concise answers.
+*   **🔢 Multi-Question Sequential Solving**: Automatically detects and solves high-density pages with dozens of questions one-by-one, ensuring no context overflow.
+*   **📐 MathJax & LaTeX Support**: High-fidelity extraction of mathematical expressions, converting complex formulas into readable text for the LLM.
+*   **🖼️ Multimodal Vision**: Automatically scrapes and analyzes problem-related images (diagrams, graphs, equations) to provide context-aware solutions.
+*   **🛡️ Resilient Interaction Engine**: 
+    *   **Interaction-First Solving**: Proceeds to the next question even on pages without individual "Submit" buttons.
+    *   **Adaptive True/False Test Support**: Handles both classic input-based and modern div-based interactive components.
+    *   **Fault-Tolerant Scraping**: Built-in validation to skip broken blobs and inaccessible image sources.
+*   **✍️ Flexible Answer Formatting**:
+    *   Dedicated **Short Answer** logic for Vietnamese math context (decimal commas, integer concatenation).
+    *   Simulated human-like typing speeds to avoid anti-bot detection.
 
-* **Where to get it**: Request a free secret key at [enter.pollinations.ai](https://enter.pollinations.ai).
-* **Keep it private**: Treat your AI key like a password. Don't share it or put it in public code.
-</nbsp>
+---
 
-## 📋 Quick Setup Guide: Get Started in Minutes
+## 🔑 AI Configuration
 
-You have two easy ways to use the Homework Solver in your web browser.
-</nbsp>
+This project utilizes the **Pollinations AI** gateway for high-performance model access.
 
-### Option 1: Copy and Paste (No Downloads Needed!)
+1.  **Get a Key**: Request your free secret at [enter.pollinations.ai](https://enter.pollinations.ai).
+2.  **Compatibility**: Supports OpenAI-compatible endpoints and any multimodal model (GPT-4o, DeepSeek, Claude).
 
-This is the fastest way to get started.
+---
 
-1. **Open Your Homework Page**: Go to the website where your homework questions are (e.g., `onluyen.vn`).
-2. **Open Your Browser's Console**:
-    * Right-click anywhere on the page.
-    * Choose "Inspect" or "Inspect Element" from the menu.
-    * Click on the "Console" tab in the window that opens.
-3. **Enter Your AI Key**: Type the following line into the Console and press `Enter`. Replace `'YOUR_API_KEY_HERE'` with your actual AI key (see "🔑 Get Your Free AI Key" below for how to get one).
+## 📋 Quick Start guide
 
+### Option 1: Console Injection (Fastest)
+
+1.  Open your homework page (e.g., `onluyen.vn`).
+2.  Open **Developer Tools** (F12) > **Console**.
+3.  Set your API key:
     ```js
-    window.__HW_SOLVER_POLL_KEY__ = 'YOUR_API_KEY_HERE';
+    window.__HW_SOLVER_POLL_KEY__ = 'your_key_here';
+    ```
+4.  Copy the contents of `solver.js` and paste them into the console.
+5.  Execute:
+    ```js
+    hwSolver.start(); // Auto-solve the entire page
     ```
 
-4. **Load the Solver Script**:
-    * Go to the `solver.js` file in this project (you can find it on GitHub).
-    * Copy **all** the code from that file.
-    * Paste the copied code directly into your browser's Console and press `Enter`.
-5. **Start Solving!**: The solver is now ready. You need to tell it to begin:
+### Option 2: Sniper Fetch (One-Liner)
+```js
+window.__HW_SOLVER_POLL_KEY__ = 'your_key_here';
+fetch('https://the-lazybone.github.io/ONLUYEN-HOMEWORK-AUTO-SOLVER/solver.js')
+  .then(r => r.text()).then(eval);
+```
 
-    ```js
-    hwSolver.start(); // This will make the solver automatically try to answer questions one by one.
-    // OR, if you only want to solve the current question:
-    // hwSolver.solveOnce();
-    ```
+---
 
-</nbsp>
+## 🎮 Command Reference
 
-### Option 2: One-Line Fetch (Even Faster!)
+| Command | Description |
+|:---|:---|
+| `hwSolver.start()` | Automates the entire page from top to bottom. |
+| `hwSolver.stop()` | Halts any active solving processes immediately. |
+| `hwSolver.solveOnce()` | Solves the first detected unsolved question. |
+| `hwSolver.toggleInstantMode()` | Toggles human-like vs. instant interaction speed. |
+| `hwSolver.toggleThinkBeforeAnswer()` | Toggles model reasoning output in logs. |
+| `hwSolver.help()` | Displays the full CLI interface documentation. |
 
-This method loads the script directly from GitHub, saving you a copy-paste step.
+---
 
-1. **Open Your Homework Page**: Go to the website with your homework questions (e.g., `onluyen.vn`).
-2. **Open Your Browser's Console** (Right-click > Inspect > Console).
-3. **Enter Your AI Key**: Just like in Option 1, type this line and press `Enter`, replacing `'YOUR_API_KEY_HERE'` with your AI key:
+## 🛠️ Engineering Architecture
 
-    ```js
-    window.__HW_SOLVER_POLL_KEY__ = 'YOUR_API_KEY_HERE';
-    ```
+This project is built using a decoupled modular architecture:
 
-4. **Load and Run the Solver**: Paste this single line into the Console and press `Enter`.
+*   **`Scraper`**: High-resilience engine using heuristic detection to identify question blocks, extract text/images, and detect "Solved" states.
+*   **`APIClient`**: Robust wrapper for OpenAI-compatible proxies with multimodal support and error recovery.
+*   **`UIController`**: Interaction layer that simulates mouse/keyboard events, handling complex non-standard UI components (div-buttons, custom spans).
+*   **`HomeworkSolver`**: The brain of the operation, managing the solve-loop, context management, and rate-limiting.
 
-    ```js
-    fetch('https://the-lazybone.github.io/ONLUYEN-HOMEWORK-AUTO-SOLVER/solver.js')
-      .then(response => response.text())
-      .then(scriptText => eval(scriptText))
-      .catch(error => console.error('Failed to load or run solver script:', error));
-    ```
+---
 
-5. **Start Solving!**: After the script loads, tell it to begin:
+## ⚠️ Disclaimer & Ethics
 
-    ```js
-    hwSolver.start(); // Or hwSolver.solveOnce();
-    ```
+*   **Educational Use Only**: This tool is a proof-of-concept for browser automation and AI integration. It is intended for study, verification, and research purposes.
+*   **Terms of Service**: Automated interaction with websites may violate their Terms of Service. Use responsibly and with permission.
+*   **Accuracy**: AI models are statistical; they can hallucinate. Always verify results manually.
 
-</nbsp>
+## 📝 License
 
-## 🎮 How to Control the Solver
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-Once the `solver.js` script is loaded, you can use these commands in your browser's Console:
-
-* `hwSolver.start()`: Starts the solver, which will automatically try to answer questions one by one.
-* `hwSolver.stop()`: Stops the automatic solving process.
-* `hwSolver.solveOnce()`: Solves only the current question and then stops.
-* `hwSolver.toggleInstantMode()`: Switches between fast (instant) typing and human-like typing speeds.
-* `hwSolver.toggleThinkBeforeAnswer()`: Toggles whether the AI shows its internal reasoning before giving a final answer.
-* `hwSolver.help()`: Shows a list of available commands in the console.
-</nbsp>
-
-## ❓ Frequently Asked Questions
-
-* **"My browser blocked the script!"**: Some browsers have strict security. Try using your browser's "Snippets" feature (usually in the "Sources" tab of Developer Tools) or save `solver.js` to your computer and load it as a local file.
-* **"The solver isn't working on my homework site."**: This tool was primarily tested on `onluyen.vn`. Other sites might have different layouts. You might need to update the "selectors" (the parts of the code that find buttons and text boxes) in `solver.js`. This usually requires some coding knowledge.
-* **"What AI models can I use?"**: The `solver.js` file uses models like `deepseek-reasoning` or `openai-reasoning`. You can find a list of supported models at [text.pollinations.ai/models](https://text.pollinations.ai/models) if you want to change them in the `solver.js` file.
-</nbsp>
-
-## ⚠️ Important Notes
-
-* **Security Warning for Option 2 (`eval()` command)**: The one-line fetch method uses `eval()`, which runs code directly from the internet. **Only use this with scripts from sources you completely trust.** While we've included error handling, always be cautious.
-* **Permissions & Ethics**: This is a research and testing tool. **Always get permission** before using automated tools on any website. Using automation without consent can violate terms of service and local laws. Do not use this tool to cheat or facilitate academic dishonesty.
-* **AI Accuracy Disclaimer**: The AI in this tool is advanced but not infallible—it will not always provide correct answers (never 100% accuracy). Use this solely for educational purposes and verification. Always review and double-check AI-generated responses manually before submitting, as errors can occur.
-* **Customization**: This is a prototype. If you want to use it on a new site, you'll likely need to update the CSS selectors (in the `Scraper` and `UIController` classes within `solver.js`) to match that site's specific design.
-* **Tested Browsers**:
-  * Microsoft Edge (Chromium)
-  * Google Chrome
-  * Brave
-</nbsp>
-
-## 🔧 For Advanced Users & Developers
-
-* **API Key Priority**: The code reads the AI key in this order:
-    1. `window.__HW_SOLVER_POLL_KEY__` (injected via browser console - preferred)
-    2. `process.env.HW_SOLVER_POLL_KEY` (for local Node.js environments)
-
-### Customizing API Proxy and Models
-
-If you want to use a different AI service or model, you can modify the `CONFIG` object at the top of `solver.js`. This allows flexibility to switch proxies or models while keeping the rest of the code intact.
-
-#### 1. Changing the API Proxy (PROXY_URL)
-
-* The default proxy is Pollinations.ai (`https://gen.pollinations.ai/v1/chat/completion`), which acts as a bridge to various AI models.
-
-* To use another OpenAI-compatible proxy (e.g., your own server, Grok API, or another service):
-  * Edit `CONFIG.PROXY_URL` in `solver.js`.
-  * Example:
-
-    ```js
-    PROXY_URL: "https://your-custom-proxy.com/...",
-    ```
-
-* **Note**: Ensure the new proxy supports the same API format (OpenAI-style chat completions). You may need to adjust headers or payload if the endpoint differs. Update `POLL_KEY` if the new service uses a different authentication method (e.g., API key in headers or query params).
-
-#### 2. Changing the AI Model (MODEL)
-
-* The default model is `kimi-k2-thinking` for no image questions and `openai-reasoning` vice versa, optimized for logical reasoning in homework questions.
-
-* To switch models:
-  * For Pollinations.ai: Edit `CONFIG.MODEL` in `solver.js`. Available models (in json format) include in this link [gen.pollinations.ai/models](https://gen.pollinations.ai/models).
-  * Example:
-
-    ```js
-    MODEL: "openai-reasoning",
-    ```
-
-* For other proxies: The `model` field in the API payload will be passed directly—check your provider's documentation for supported models (e.g., OpenAI: `gpt-4o-mini`, Anthropic: `claude-3-haiku`).
-
-* **Vision Support**: If your questions involve images, use `VISION_MODEL` (default: `openai-reasoning`) for models that handle multimodal inputs.
-
-#### 3. Key Considerations
-
-* **Compatibility**: Test changes with `hwSolver.solveOnce()` to ensure the proxy/model responds correctly. Errors may occur if the model doesn't support short, precise answers.
-* **Rate Limits & Costs**: Different services have varying limits. Pollinations.ai offers free tiers (with limited usages per days of course); others may require paid plans.
-* **Security**: Never commit your API keys to public repositories. Use environment variables or console injection as shown in the setup guide.
-* **Advanced Tweaks**: Adjust `max_tokens` (default: 64) or `temperature` (default: 0.3) in the `APIClient` class for longer/more creative responses.
-
-After editing, reload the script in your browser console to apply changes.
-
-* **Contributing**: Feel free to contribute! If you find bugs or want to add features, please open an issue or pull request.
-</nbsp>
-
-## Credits
-
-Developed and tested using the Pollinations.ai proxy. Special thanks to [Pollinations](https://pollinations.ai) for their API/proxy service.
+---
+*Developed with ❤️ for the automation community.*
