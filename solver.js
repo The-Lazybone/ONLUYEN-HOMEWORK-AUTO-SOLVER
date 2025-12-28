@@ -1352,6 +1352,8 @@
 
         clearAnswers() {
             this.ui.clearAllAnswers();
+            window._lastQNum = -1;
+            window._lastQId = -1;
             this.overlay.updateStatus("Cleared", "#f39c12");
             setTimeout(() => this.overlay.updateStatus("Ready"), 2000);
         }
