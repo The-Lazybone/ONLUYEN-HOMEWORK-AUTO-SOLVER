@@ -326,7 +326,9 @@
         _getQuestionContainers() {
             // Return all potential question containers
             return Array.from(
-                document.querySelectorAll(".question-name, #step")
+                document.querySelectorAll(
+                    ".question-name, #step, app-question-short-answer, .question.fade-indown, .test-school-question-option, app-question-true-false-test"
+                )
             ).filter((el) => el.offsetParent !== null); // Filter out elements not currently visible/in document flow
         }
 
@@ -404,12 +406,34 @@
                     "Attempting to detect question type in container with class:",
                     container.className || container.tagName
                 );
+
+                // Try Short Answer (New Type)
+                const short = this.scrapeShortAnswer(container);
+                if (short.blanks.length && !short.isSolved) {
+                    logger.info("Detected unsolved Short Answer.");
+                    return short;
+                }
+
+                // Try MCQ
                 const mcq = this.scrapeMCQ(container);
-                if (mcq.options.length) return mcq;
+                if (mcq.options.length && !mcq.isSolved) {
+                    logger.info("Detected unsolved MCQ.");
+                    return mcq;
+                }
+
+                // Try Fillable
                 const fill = this.scrapeFillable(container);
-                if (fill.blanks.length) return fill;
+                if (fill.blanks.length && !fill.isSolved) {
+                    logger.info("Detected unsolved Fillable.");
+                    return fill;
+                }
+
+                // Try True/False
                 const trueFalse = this.scrapeTrueFalse(container);
-                if (trueFalse.subQuestions.length) return trueFalse;
+                if (trueFalse.subQuestions.length && !trueFalse.isSolved) {
+                    logger.info("Detected unsolved True/False.");
+                    return trueFalse;
+                }
             }
             return { type: "unknown" };
         }
@@ -466,17 +490,22 @@
                     container.querySelector(".question-name")
                 ),
             ];
-            const uniqueImages = [...new Set(images)];
 
             const nodes = Array.from(
                 container.querySelectorAll(
-                    // Use container.querySelectorAll here
                     ".row.text-left.options .question-option, .list-selection .select-item"
                 )
             );
+
+            let isSolved = false;
             const options = nodes
                 .map((node) => {
                     let letter, text, contentNode;
+                    const isSelected =
+                        node.classList.contains("selected") ||
+                        node.classList.contains("active");
+                    if (isSelected) isSolved = true;
+
                     if (node.matches(".question-option")) {
                         // Legacy format
                         logger.debug("Processing legacy MCQ option format.");
@@ -515,7 +544,70 @@
                 type: "mcq",
                 question: questionText,
                 options,
-                images: uniqueImages,
+                images,
+                isSolved,
+                container,
+            };
+        }
+
+        scrapeShortAnswer(container) {
+            if (
+                !container ||
+                !container.querySelector(
+                    "app-question-short-answer, .content-question"
+                )
+            ) {
+                return {
+                    type: "shortanswer",
+                    question: "",
+                    blanks: [],
+                    images: [],
+                    isSolved: false,
+                };
+            }
+
+            const inputs = Array.from(
+                container.querySelectorAll("input[type='text'], textarea")
+            );
+            const isSolved =
+                inputs.length > 0 &&
+                inputs.every((input) => input.value.trim().length > 0);
+            const blanks = inputs.map((el, i) => ({ index: i, element: el }));
+
+            const questionParts = [];
+
+            const headerNode = container.querySelector(
+                ".question-header, .quetion-number"
+            );
+            if (headerNode)
+                questionParts.push(this._getCleanedText(headerNode));
+
+            const contentNode = container.querySelector(
+                ".content-question, .content"
+            );
+            if (contentNode) {
+                // Short answer usually doesn't need [BLANK] replacement in the body
+                // because the input is usually separate in the .answer div
+                questionParts.push(this._getCleanedText(contentNode));
+            }
+
+            const questionText = [...new Set(questionParts)]
+                .join("\n\n")
+                .trim();
+            const images = [
+                ...this._scrapeImages(
+                    container.querySelector(".content-question")
+                ),
+                ...this._scrapeImages(container.querySelector(".content")),
+            ];
+
+            return {
+                type: "shortanswer",
+                question: questionText,
+                blanks,
+                images,
+                isSolved,
+                container,
             };
         }
 
@@ -526,23 +618,26 @@
                     question: "",
                     blanks: [],
                     images: [],
+                    isSolved: false,
                 };
+
+            const inputs = Array.from(
+                container.querySelectorAll("input[type='text'], textarea")
+            );
+            // For classic fillable, the inputs are inside the question text.
+            // If we found them via Short Answer first, this method shouldn't be main.
+            if (container.querySelector("app-question-short-answer"))
+                return { type: "fillable", blanks: [], isSolved: false };
+
+            const isSolved =
+                inputs.length > 0 &&
+                inputs.every((input) => input.value.trim().length > 0);
+            const blanks = inputs.map((el, i) => ({ index: i, element: el }));
 
             const qNode =
                 container.querySelector(".fadein") ||
                 container.querySelector(".question-text") ||
                 container;
-            const inputs = Array.from(
-                container.querySelectorAll("input[type='text'], textarea")
-            );
-            // Clear existing values in the actual DOM inputs before scraping
-            inputs.forEach((el) => {
-                el.value = "";
-                el.dispatchEvent(new Event("input", { bubbles: true }));
-                el.dispatchEvent(new Event("change", { bubbles: true }));
-            });
-            const blanks = inputs.map((el, i) => ({ index: i, element: el }));
-
             let questionText = "";
             if (qNode) {
                 const clone = qNode.cloneNode(true);
@@ -550,11 +645,7 @@
                     .querySelectorAll("input[type='text'], textarea")
                     .forEach((el) => {
                         const parent = el.parentNode;
-                        // Remove the span that displays the pre-filled answer if present
-                        const ansSpan =
-                            parent.querySelector(".ans-span-second");
-                        ansSpan?.remove();
-                        // Replace input with [BLANK]
+                        parent.querySelector(".ans-span-second")?.remove();
                         parent.replaceChild(
                             document.createTextNode(" [BLANK] "),
                             el
@@ -562,9 +653,17 @@
                     });
                 questionText = this._getCleanedText(clone);
             }
+
             const images = this._scrapeImages(qNode);
 
-            return { type: "fillable", question: questionText, blanks, images };
+            return {
+                type: "fillable",
+                question: questionText,
+                blanks,
+                images,
+                isSolved,
+                container,
+            };
         }
 
         scrapeTrueFalse(container) {
@@ -586,21 +685,68 @@
             const table = this._scrapeTable(qNode);
 
             const subQuestionNodes = Array.from(
-                container.querySelectorAll(".question-child .child-content")
+                container.querySelectorAll(
+                    ".question-child .child-content, .option.ng-star-inserted"
+                )
             );
             const subQuestions = subQuestionNodes
-                .map((node) => ({
-                    char:
-                        node
-                            .querySelector(".option-char")
-                            ?.innerText.trim()
-                            .replace(")", "")
-                            .replace(".", "") || null,
-                    text: this._getCleanedText(node.querySelector(".fadein")),
-                    trueElement: node.querySelector('input[value="true"]'),
-                    falseElement: node.querySelector('input[value="false"]'),
-                }))
-                .filter((sq) => sq.char);
+                .map((node) => {
+                    // Classic structure (inputs)
+                    const trueInput = node.querySelector('input[value="true"]');
+                    const falseInput = node.querySelector(
+                        'input[value="false"]'
+                    );
+
+                    // New "Test" structure (divs)
+                    const itemAnswers = Array.from(
+                        node.querySelectorAll(".item-answer")
+                    );
+                    const trueDiv = itemAnswers.find((el) =>
+                        el.innerText.includes("Đúng")
+                    );
+                    const falseDiv = itemAnswers.find((el) =>
+                        el.innerText.includes("Sai")
+                    );
+
+                    const trueElement = trueInput || trueDiv;
+                    const falseElement = falseInput || falseDiv;
+
+                    const isAnswered =
+                        (trueInput && trueInput.checked) ||
+                        (falseInput && falseInput.checked) ||
+                        (trueDiv &&
+                            (trueDiv.classList.contains("active-answer") ||
+                                trueDiv.classList.contains("selected"))) ||
+                        (falseDiv &&
+                            (falseDiv.classList.contains("active-answer") ||
+                                falseDiv.classList.contains("selected")));
+
+                    return {
+                        char:
+                            node
+                                .querySelector(".option-char")
+                                ?.innerText.trim()
+                                .replace(")", "")
+                                .replace(".", "") ||
+                            node
+                                .querySelector(".item-option")
+                                ?.innerText.trim()
+                                .replace(")", "")
+                                .replace(".", "") ||
+                            null,
+                        text: this._getCleanedText(
+                            node.querySelector(".fadein, .option-content")
+                        ),
+                        trueElement,
+                        falseElement,
+                        isAnswered,
+                    };
+                })
+                .filter((sq) => sq.char || sq.text);
+
+            const isSolved =
+                subQuestions.length > 0 &&
+                subQuestions.every((sq) => sq.isAnswered);
 
             return {
                 type: "truefalse",
@@ -608,6 +754,8 @@
                 subQuestions,
                 images,
                 table,
+                isSolved,
+                container,
             };
         }
     }
@@ -770,11 +918,22 @@
                 return false;
             }
             this._simulateClick(targetElement);
-            targetElement.checked = true;
-            targetElement.dispatchEvent(new Event("change", { bubbles: true }));
+
+            if (targetElement.tagName === "INPUT") {
+                targetElement.checked = true;
+                targetElement.dispatchEvent(
+                    new Event("change", { bubbles: true })
+                );
+            } else {
+                targetElement.classList.add("active-answer");
+                targetElement.dispatchEvent(
+                    new Event("click", { bubbles: true })
+                );
+            }
+
             logger.debug(
                 `Selected ${value ? "True" : "False"} for sub-question ${
-                    subQuestion.char
+                    subQuestion.char || ""
                 }`
             );
             return true;
@@ -995,49 +1154,44 @@
         async solveOnce() {
             logger.debug("Starting new solve cycle.");
 
-            // Extract current question number and ID
-            const header = document.querySelector(".question-header");
-            let currentNum = null;
-            let currentId = null;
-            if (header) {
-                const numElement = header.querySelector(".num");
-                if (numElement) {
-                    const numText = numElement.textContent.trim();
-                    const numMatch = numText.match(/Câu:\s*(\d+)/i);
-                    if (numMatch) {
-                        currentNum = parseInt(numMatch[1], 10);
-                        logger.info(`Extracted question number: ${currentNum}`);
-                    }
-                    const idElement = header.querySelector(".num span");
-                    if (idElement) {
-                        const idText = idElement.textContent.trim();
-                        const idMatch = idText.match(/#(\d+)/);
-                        if (idMatch) {
-                            currentId = idMatch[1];
-                            logger.info(`Extracted question ID: ${currentId}`);
-                        }
-                    }
-                }
-            } // Close the if (header) block
-
-            // Check if same question as last (end of quiz)
-            if (
-                window._lastQNum !== undefined &&
-                window._lastQId !== undefined &&
-                currentNum === window._lastQNum &&
-                currentId === window._lastQId
-            ) {
-                logger.info(
-                    `Question repeated (num: ${currentNum}, ID: ${currentId}) - all questions completed. Stopping solver.`
-                );
+            const detected = this.scraper.detectQuestionType();
+            if (detected.type === "unknown") {
+                logger.info("No unsolved questions detected. Stopping solver.");
                 this.stop();
-                return true;
+                return false;
             }
 
-            const detected = this.scraper.detectQuestionType();
+            // Extract metadata from this specific container
+            const container = detected.container || document;
+            const header = container.querySelector(
+                ".question-header, .quetion-number, .num"
+            );
+
+            let currentNum = null;
+            let currentId = container.id || null;
+
+            if (header) {
+                const text = header.innerText.trim();
+                // Match formats: "Câu 1:", "Câu: 1", etc.
+                const numMatch = text.match(/Câu:?\s*(\d+)/i);
+                if (numMatch) currentNum = parseInt(numMatch[1], 10);
+
+                const idElement = header.querySelector("span, .num span");
+                if (idElement) {
+                    const idMatch = idElement.innerText.match(/#(\d+)/);
+                    if (idMatch) currentId = idMatch[1];
+                }
+            }
+
+            logger.info(
+                `Solving ${detected.type.toUpperCase()} - Num: ${currentNum}, ID: ${currentId}`
+            );
 
             let solvedSuccess = false;
             switch (detected.type) {
+                case "shortanswer":
+                    solvedSuccess = await this._solveShortAnswer(detected);
+                    break;
                 case "mcq":
                     solvedSuccess = await this._solveMCQ(detected);
                     break;
@@ -1047,23 +1201,11 @@
                 case "truefalse":
                     solvedSuccess = await this._solveTrueFalse(detected);
                     break;
-                default:
-                    logger.debug("No question detected.");
-                    solvedSuccess = false;
-                    break;
             }
 
-            // Update last question if solved successfully
-            if (
-                solvedSuccess &&
-                currentNum !== undefined &&
-                currentId !== undefined
-            ) {
+            if (solvedSuccess) {
                 window._lastQNum = currentNum;
                 window._lastQId = currentId;
-                logger.info(
-                    `Updated last question to num: ${currentNum}, ID: ${currentId}`
-                );
             }
 
             return solvedSuccess;
@@ -1095,6 +1237,16 @@
             return (
                 thinkPrefix +
                 `You are a homework solver. Mathematical formulas and symbols are enclosed in [MATHJAX]...[/MATHJAX] tags. Interpret the content within these tags as mathematical expressions. If the question is in another language, translate it to English first and then solve it step by step. Fill the blank(s) with short phrase(s) or word(s) or a number. For numerical answers, use a comma (,) as the decimal separator. Even if you are unsure or lack complete information, provide your best guess or approximation as a short phrase, word, or number. Never leave the answer blank or refuse—always fill it in. Format the answer concisely, starting with the key numerical value or phrase if applicable. Reply only with the short answer (numerical if possible), with no prefixes or suffixes. \n\nQuestion:\n${question}`
+            );
+        }
+
+        _buildShortAnswerPrompt(question) {
+            const thinkPrefix = CONFIG.THINK_BEFORE_ANSWER
+                ? 'Internally use step-by-step reasoning as a reasoning model would, but do NOT reveal your chain-of-thought. After reasoning, reply only with the final short answer prefixed by "FINAL:".\n\n'
+                : "";
+            return (
+                thinkPrefix +
+                `You are a homework solver. Mathematical formulas and symbols are enclosed in [MATHJAX]...[/MATHJAX] tags. Interpret these as mathematical expressions. If the question is in another language, translate to English first. Solve the following question with a single concise answer. \n\nCRITICAL NUMERIC RULES:\n- For decimal numbers, use EXACTLY ONE comma (,) as the decimal separator (e.g., 12,5).\n- For whole numbers, provide the number only (e.g., 25).\n- If the question asks you to choose multiple numeric options and combine them, concatenate the numbers into a single integer without spaces (e.g., choosing 1, 3, and 5 results in 135).\n- Do NOT include units (e.g., kg, m, s), letters, spaces, or any other characters if the answer is a number.\n- Provide ONLY the final numeric value or a very short word/phrase if it refers to a non-math concept.\n- Never leave the answer blank or refuse.\n\nQuestion:\n${question}`
             );
         }
 
@@ -1312,7 +1464,8 @@
 
             this.ui.selectOption(optionToSelect);
             await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
-            return this.ui.clickSubmit();
+            await this.ui.clickSubmit();
+            return true;
         }
 
         async _solveFillable({ question, blanks, images }) {
@@ -1327,14 +1480,37 @@
 
             if (!answerText) {
                 logger.warn("LLM returned an empty answer.");
-                logger.debug("Raw LLM response for fillable:", response);
                 return false;
             }
 
             await this.ui.fillBlank(blanks[0], answerText);
-            // Small delay to ensure all input processing is complete before submitting
-            await new Promise((r) => setTimeout(r, 2500));
-            return this.ui.clickSubmit();
+            await new Promise((r) => setTimeout(r, 1000));
+            await this.ui.clickSubmit();
+            return true;
+        }
+
+        async _solveShortAnswer({ question, blanks, images }) {
+            if (blanks.length === 0) return false;
+
+            // Use dedicated short-answer prompt with strict formatting
+            const prompt = this._buildShortAnswerPrompt(question);
+            logger.info("Short Answer Prompt:", prompt);
+
+            const response = await this.api.call(prompt, images);
+            this.lastApiResponse = response;
+            const answerText = this._parseFill(response);
+            logger.info(`LLM Short Answer parsed to: '${answerText}'`);
+
+            if (!answerText) {
+                logger.warn("LLM returned an empty short answer.");
+                return false;
+            }
+
+            // Short answer usually has one input field in the .answer div
+            await this.ui.fillBlank(blanks[0], answerText);
+            await new Promise((r) => setTimeout(r, 1000));
+            await this.ui.clickSubmit();
+            return true;
         }
 
         async _solveTrueFalse({ question, subQuestions, images, table }) {
@@ -1382,7 +1558,8 @@
             }
 
             await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
-            return this.ui.clickSubmit();
+            await this.ui.clickSubmit();
+            return true;
         }
     }
 
