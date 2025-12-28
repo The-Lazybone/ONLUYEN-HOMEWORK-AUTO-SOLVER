@@ -12,6 +12,10 @@ An advanced, agentic browser automation tool engineered to solve complex academi
 *   **🔢 Multi-Question Sequential Solving**: Automatically detects and solves high-density pages with dozens of questions one-by-one, ensuring no context overflow.
 *   **📐 MathJax & LaTeX Support**: High-fidelity extraction of mathematical expressions, converting complex formulas into readable text for the LLM.
 *   **🖼️ Multimodal Vision**: Automatically scrapes and analyzes problem-related images (diagrams, graphs, equations) to provide context-aware solutions.
+*   **🖥️ Floating UI Dashboard**: A non-intrusive overlay with real-time status updates (`Thinking...`, `Typing...`, `Waiting...`) and dedicated control buttons.
+*   **💾 Persistent Configuration**: Integrated API key input field with `localStorage` persistence—no more manual console setup on every reload.
+*   **🧹 Smart Reset Loop**: "Clear All" feature that resets all page inputs and specialized status classes (like `done`), allowing for instant re-solving.
+*   **🐒 Tampermonkey Native**: Optimized with a dedicated loader script (`wrapper.user.js`) for seamless updates and execution.
 *   **🛡️ Resilient Interaction Engine**: 
     *   **Interaction-First Solving**: Proceeds to the next question even on pages without individual "Submit" buttons.
     *   **Adaptive True/False Test Support**: Handles both classic input-based and modern div-based interactive components.
@@ -33,26 +37,19 @@ This project utilizes the **Pollinations AI** gateway for high-performance model
 
 ## 📋 Quick Start guide
 
-### Option 1: Console Injection (Fastest)
-
-1.  Open your homework page (e.g., `onluyen.vn`).
-2.  Open **Developer Tools** (F12) > **Console**.
-3.  Set your API key:
-    ```js
-    window.__HW_SOLVER_POLL_KEY__ = 'your_key_here';
-    ```
-4.  Copy the contents of `solver.js` and paste them into the console.
-5.  Execute:
-    ```js
-    hwSolver.start(); // Auto-solve the entire page
-    ```
+### Option 1: Tampermonkey (Recommended)
+1. Install a userscript manager like **Tampermonkey**.
+2. Create a new script and paste the contents of `wrapper.user.js`.
+3. Visit any `onluyen.vn` homework page.
+4. The **AI Solver Panel** will appear automatically. Enter your API key once in the portal, and you're ready!
 
 ### Option 2: Sniper Fetch (One-Liner)
+Open **DevTools (F12) > Console** and run:
 ```js
-window.__HW_SOLVER_POLL_KEY__ = 'your_key_here';
 fetch('https://the-lazybone.github.io/ONLUYEN-HOMEWORK-AUTO-SOLVER/solver.js')
   .then(r => r.text()).then(eval);
 ```
+*Note: The UI panel will appear automatically.*
 
 ---
 

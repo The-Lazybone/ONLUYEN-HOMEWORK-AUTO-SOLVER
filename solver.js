@@ -1,11 +1,4 @@
-// === Unified Auto-solver (MCQ + Fill-in) ===
-// NOTE: This is a generic, single-file prototype intended for research and
-// testing. During development it was tuned and tested against onluyen.vn —
-// but it is NOT limited to that site. Selectors, timings, and small UI
-// interactions are site-specific and must be adjusted for other platforms.
-// Always obtain permission before running automated interactions against
-// third-party websites.
-// A modular, multi-class implementation for better readability and maintenance.
+// === Intelligent AI Homework Solver Core ===
 
 (function () {
     "use strict";
@@ -17,10 +10,13 @@
         POLL_KEY:
             (typeof globalThis !== "undefined" &&
                 globalThis.__HW_SOLVER_POLL_KEY__) ||
+            (typeof localStorage !== "undefined" &&
+                localStorage.getItem("HW_SOLVER_API_KEY")) ||
             (typeof globalThis !== "undefined" &&
                 globalThis.process &&
                 globalThis.process.env &&
-                globalThis.process.env.HW_SOLVER_POLL_KEY) | "",
+                globalThis.process.env.HW_SOLVER_POLL_KEY) ||
+            "",
         DEFAULT_MODEL: "gemini", // Default model for text-only prompts
         VISION_MODEL: "gemini", // Model for prompts with images
         RETRIES: 3,
@@ -1033,6 +1029,36 @@
             logger.debug("Post-skip action completed.");
             return true;
         }
+
+        clearAllAnswers() {
+            logger.info("Clearing all answers on page...");
+            // Clear text inputs and textareas
+            document
+                .querySelectorAll("input[type='text'], textarea")
+                .forEach((el) => {
+                    el.value = "";
+                    el.dispatchEvent(new Event("input", { bubbles: true }));
+                    el.dispatchEvent(new Event("change", { bubbles: true }));
+                });
+
+            // Clear radio buttons and checkboxes
+            document
+                .querySelectorAll("input[type='radio'], input[type='checkbox']")
+                .forEach((el) => {
+                    el.checked = false;
+                    el.dispatchEvent(new Event("change", { bubbles: true }));
+                });
+
+            // Clear custom div-based active answers (True/False Test)
+            document
+                .querySelectorAll(".active-answer, .selected, .option.done")
+                .forEach((el) => {
+                    el.classList.remove("active-answer", "selected", "done");
+                });
+
+            logger.info("All answers cleared.");
+            return true;
+        }
     }
 
     // -------------- SCHEDULER CLASS --------------
@@ -1113,6 +1139,12 @@
             }
 
             const delay = baseInterval + jitter + backoff;
+            if (this.solver.overlay && this.active) {
+                this.solver.overlay.updateStatus(
+                    `Waiting (${Math.round(delay / 1000)}s)`,
+                    "#2ecc71"
+                );
+            }
             this.timer = setTimeout(() => this._runTask(), delay);
         }
 
@@ -1129,6 +1161,170 @@
         }
     }
 
+    // -------------- BASIC UI CLASS --------------
+    class BasicUI {
+        constructor(solver) {
+            this.solver = solver;
+            this.container = null;
+            this.statusEl = null;
+            this.isMinimized = false;
+            this.init();
+        }
+
+        init() {
+            const styles = `
+                #hw-solver-overlay {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    width: 200px;
+                    background: #2c3e50;
+                    color: white;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    z-index: 999999;
+                    overflow: hidden;
+                    transition: all 0.3s ease;
+                }
+                #hw-solver-header {
+                    padding: 10px;
+                    background: #34495e;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    cursor: pointer;
+                    user-select: none;
+                }
+                #hw-solver-content {
+                    padding: 15px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                #hw-solver-status {
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                    color: #ecf0f1;
+                }
+                .hw-input-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 5px;
+                    margin-bottom: 5px;
+                }
+                .hw-input-group label {
+                    font-size: 11px;
+                    color: #bdc3c7;
+                }
+                .hw-key-input {
+                    padding: 6px;
+                    border: 1px solid #34495e;
+                    border-radius: 4px;
+                    background: #3d566e;
+                    color: white;
+                    font-size: 12px;
+                }
+                .hw-btn {
+                    padding: 8px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    transition: background 0.2s;
+                    color: white;
+                }
+                .hw-btn-start { background: #27ae60; }
+                .hw-btn-start:hover { background: #2ecc71; }
+                .hw-btn-once { background: #2980b9; }
+                .hw-btn-once:hover { background: #3498db; }
+                .hw-btn-stop { background: #c0392b; }
+                .hw-btn-stop:hover { background: #e74c3c; }
+                .hw-btn-clear { background: #7f8c8d; }
+                .hw-btn-clear:hover { background: #95a5a6; }
+                #hw-solver-toggle {
+                    font-size: 12px;
+                }
+                .minimized {
+                    height: 40px !important;
+                    width: 120px !important;
+                }
+            `;
+
+            const styleSheet = document.createElement("style");
+            styleSheet.innerText = styles;
+            document.head.appendChild(styleSheet);
+
+            this.container = document.createElement("div");
+            this.container.id = "hw-solver-overlay";
+            this.container.innerHTML = `
+                <div id="hw-solver-header">
+                    <span>AI Solver</span>
+                    <span id="hw-solver-toggle">▼</span>
+                </div>
+                <div id="hw-solver-content">
+                    <div id="hw-solver-status">Status: Ready</div>
+                    <div class="hw-input-group">
+                        <label>API Key</label>
+                        <input type="password" class="hw-key-input" id="hw-api-key" placeholder="Enter key..." value="${CONFIG.POLL_KEY}">
+                    </div>
+                    <button class="hw-btn hw-btn-start" id="hw-start-btn">Start Auto</button>
+                    <button class="hw-btn hw-btn-once" id="hw-once-btn">Solve Once</button>
+                    <button class="hw-btn hw-btn-stop" id="hw-stop-btn">Stop</button>
+                    <button class="hw-btn hw-btn-clear" id="hw-clear-btn">Clear All</button>
+                </div>
+            `;
+
+            document.body.appendChild(this.container);
+
+            this.statusEl = this.container.querySelector("#hw-solver-status");
+
+            this.container.querySelector("#hw-solver-header").onclick = () =>
+                this.toggleMinimize();
+            this.container.querySelector("#hw-start-btn").onclick = () =>
+                this.solver.start();
+            this.container.querySelector("#hw-once-btn").onclick = () =>
+                this.solver.solveOnce();
+            this.container.querySelector("#hw-stop-btn").onclick = () =>
+                this.solver.stop();
+            this.container.querySelector("#hw-clear-btn").onclick = () =>
+                this.solver.clearAnswers();
+
+            const keyInput = this.container.querySelector("#hw-api-key");
+            keyInput.onchange = (e) => {
+                const newKey = e.target.value.trim();
+                CONFIG.POLL_KEY = newKey;
+                localStorage.setItem("HW_SOLVER_API_KEY", newKey);
+                logger.info("API Key updated and saved to localStorage.");
+                this.updateStatus("Key Saved", "#2ecc71");
+                setTimeout(() => this.updateStatus("Ready"), 2000);
+            };
+        }
+
+        updateStatus(text, color = "#ecf0f1") {
+            if (this.statusEl) {
+                this.statusEl.innerText = `Status: ${text}`;
+                this.statusEl.style.color = color;
+            }
+        }
+
+        toggleMinimize() {
+            this.isMinimized = !this.isMinimized;
+            const content = this.container.querySelector("#hw-solver-content");
+            const toggle = this.container.querySelector("#hw-solver-toggle");
+            if (this.isMinimized) {
+                this.container.classList.add("minimized");
+                content.style.display = "none";
+                toggle.innerText = "▲";
+            } else {
+                this.container.classList.remove("minimized");
+                content.style.display = "flex";
+                toggle.innerText = "▼";
+            }
+        }
+    }
+
     // -------------- HOMEWORK SOLVER (ORCHESTRATOR) --------------
     class HomeworkSolver {
         constructor() {
@@ -1138,20 +1334,30 @@
             this.webSearch = new WebSearch();
             this.scheduler = new Scheduler(this.solveOnce.bind(this), this);
             this.lastApiResponse = null;
+            this.overlay = new BasicUI(this);
         }
 
         start() {
             this.scheduler.start();
+            this.overlay.updateStatus("Running", "#27ae60");
         }
         stop() {
             this.scheduler.stop();
+            this.overlay.updateStatus("Stopped", "#c0392b");
         }
 
         async skipCurrentQuestion() {
             return await this.ui.clickSkip();
         }
 
+        clearAnswers() {
+            this.ui.clearAllAnswers();
+            this.overlay.updateStatus("Cleared", "#f39c12");
+            setTimeout(() => this.overlay.updateStatus("Ready"), 2000);
+        }
+
         async solveOnce() {
+            this.overlay.updateStatus("Detecting...", "#3498db");
             logger.debug("Starting new solve cycle.");
 
             const detected = this.scraper.detectQuestionType();
@@ -1345,7 +1551,10 @@
             return parsedResults;
         }
 
-        async _solveMCQ({ question, options, images }) {
+        async _solveMCQ(questionData) {
+            this.overlay.updateStatus("Thinking (MCQ)...", "#f39c12");
+            const { question, options, images } = questionData;
+
             const prompt = this._buildMCQPrompt(question, options);
             logger.debug("MCQ Prompt:", prompt);
 
@@ -1452,8 +1661,11 @@
                 return false;
             }
 
+            logger.info(`LLM suggests option: ${letter}`);
+            this.overlay.updateStatus("Applying Answer...", "#3498db");
+
             const optionToSelect = options.find(
-                (o) => o.letter.toUpperCase() === letter
+                (o) => o.letter.toUpperCase() === letter.toUpperCase()
             );
             if (!optionToSelect) {
                 logger.warn(
@@ -1468,7 +1680,9 @@
             return true;
         }
 
-        async _solveFillable({ question, blanks, images }) {
+        async _solveFillable(questionData) {
+            this.overlay.updateStatus("Thinking (Fillable)...", "#f39c12");
+            const { question, blanks, images } = questionData;
             if (blanks.length === 0) return false;
             const prompt = this._buildFillPrompt(question);
             logger.info("Fill Prompt:", prompt);
@@ -1483,13 +1697,16 @@
                 return false;
             }
 
+            this.overlay.updateStatus("Typing Answers...", "#3498db");
             await this.ui.fillBlank(blanks[0], answerText);
             await new Promise((r) => setTimeout(r, 1000));
             await this.ui.clickSubmit();
             return true;
         }
 
-        async _solveShortAnswer({ question, blanks, images }) {
+        async _solveShortAnswer(questionData) {
+            this.overlay.updateStatus("Thinking (Short)...", "#f39c12");
+            const { question, blanks, images } = questionData;
             if (blanks.length === 0) return false;
 
             // Use dedicated short-answer prompt with strict formatting
@@ -1506,6 +1723,7 @@
                 return false;
             }
 
+            this.overlay.updateStatus("Typing Answers...", "#3498db");
             // Short answer usually has one input field in the .answer div
             await this.ui.fillBlank(blanks[0], answerText);
             await new Promise((r) => setTimeout(r, 1000));
@@ -1513,7 +1731,9 @@
             return true;
         }
 
-        async _solveTrueFalse({ question, subQuestions, images, table }) {
+        async _solveTrueFalse(questionData) {
+            this.overlay.updateStatus("Thinking (T/F)...", "#f39c12");
+            const { question, subQuestions, images, table } = questionData;
             if (subQuestions.length === 0) return false;
             const prompt = this._buildTrueFalsePrompt(
                 question,
@@ -1540,6 +1760,7 @@
                 return false;
             }
 
+            this.overlay.updateStatus("Applying Answers...", "#3498db");
             let allSelected = true;
             for (let i = 0; i < subQuestions.length; i++) {
                 const sq = subQuestions[i];
