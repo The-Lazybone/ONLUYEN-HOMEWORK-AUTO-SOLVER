@@ -1228,6 +1228,22 @@
                 return;
             }
 
+            // Persistence check: If everything is there, do nothing.
+            if (
+                document.getElementById("hw-solver-overlay") &&
+                document.getElementById("hw-solver-styles")
+            ) {
+                return;
+            }
+
+            // Cleanup partial remains before re-injection
+            const existingOverlay =
+                document.getElementById("hw-solver-overlay");
+            if (existingOverlay) existingOverlay.remove();
+
+            const existingStyles = document.getElementById("hw-solver-styles");
+            if (existingStyles) existingStyles.remove();
+
             const styles = `
                 #hw-solver-overlay {
                     position: fixed;
@@ -1309,6 +1325,7 @@
             `;
 
             const styleSheet = document.createElement("style");
+            styleSheet.id = "hw-solver-styles";
             styleSheet.innerText = styles;
             document.head.appendChild(styleSheet);
 
@@ -1332,7 +1349,9 @@
                 </div>
             `;
 
-            document.body.appendChild(this.container);
+            if (!document.getElementById("hw-solver-overlay")) {
+                document.body.appendChild(this.container);
+            }
 
             this.statusEl = this.container.querySelector("#hw-solver-status");
 
@@ -2025,5 +2044,40 @@
     //     }
     // };
 
-    // _scheduleAutoStart();
+    // -------------- GUARDIAN LOOP (UI PERSISTENCE) --------------
+    const startGuardian = (solverInstance) => {
+        logger.info("Guardian Loop started. Monitoring UI persistence...");
+        const performCheck = () => {
+            const overlay = document.getElementById("hw-solver-overlay");
+            const styles = document.getElementById("hw-solver-styles");
+            if (!overlay || !styles) {
+                logger.warn(
+                    "Guardian detected missing UI components. Restoring..."
+                );
+                solverInstance.overlay.init();
+            }
+        };
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.removedNodes) {
+                    if (
+                        node.id === "hw-solver-overlay" ||
+                        node.id === "hw-solver-styles"
+                    ) {
+                        performCheck();
+                        return;
+                    }
+                }
+            }
+        });
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+        });
+        setInterval(performCheck, 1500);
+        window.addEventListener("popstate", performCheck);
+        window.addEventListener("hashchange", performCheck);
+    };
+
+    startGuardian(solver);
 })();

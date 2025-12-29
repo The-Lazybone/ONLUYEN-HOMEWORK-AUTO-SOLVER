@@ -14,18 +14,27 @@
     const SCRIPT_URL =
         "https://the-lazybone.github.io/ONLUYEN-HOMEWORK-AUTO-SOLVER/solver.js";
 
-    console.log("[AI Solver] Loading core logic from GitHub...");
+    const LOAD_DELAY = 2000; // 2 second delay
 
-    fetch(SCRIPT_URL)
-        .then((response) => {
-            if (!response.ok) throw new Error("Network response was not ok");
-            return response.text();
-        })
-        .then((code) => {
-            eval(code);
-            console.log("[AI Solver] Core logic loaded successfully.");
-        })
-        .catch((error) => {
-            console.error("[AI Solver] Failed to load core logic:", error);
-        });
+    console.log(
+        `[AI Solver] Waiting ${LOAD_DELAY}ms for page stabilization...`
+    );
+
+    setTimeout(() => {
+        console.log("[AI Solver] Loading core logic from GitHub...");
+
+        fetch(SCRIPT_URL)
+            .then((response) => {
+                if (!response.ok)
+                    throw new Error("Network response was not ok");
+                return response.text();
+            })
+            .then((code) => {
+                eval(code);
+                console.log("[AI Solver] Core logic loaded successfully.");
+            })
+            .catch((error) => {
+                console.error("[AI Solver] Failed to load core logic:", error);
+            });
+    }, LOAD_DELAY);
 })();
