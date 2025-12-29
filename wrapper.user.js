@@ -6,7 +6,7 @@
 // @author       NGUYEN CONG ANH
 // @match        *://*.onluyen.vn/*
 // @grant        none
-// @run-at       document-start
+// @run-at       document-idle
 // ==/UserScript==
 
 (function () {

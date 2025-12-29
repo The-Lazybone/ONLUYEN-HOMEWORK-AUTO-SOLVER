@@ -323,7 +323,7 @@
             // Return all potential question containers
             return Array.from(
                 document.querySelectorAll(
-                    ".question-name, #step, app-question-short-answer, .question.fade-indown, .test-school-question-option, app-question-true-false-test"
+                    ".question-name, #step, app-question-short-answer, .question.fade-indown, .test-school-question-option, app-question-true-false-test, app-test-school-question-option"
                 )
             ).filter((el) => el.offsetParent !== null); // Filter out elements not currently visible/in document flow
         }
@@ -395,40 +395,56 @@
             return table ? table.outerHTML : null;
         }
 
-        detectQuestionType() {
+        _checkIsSolvedFromGrid() {
+            const active = document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+            );
+            return active ? active.classList.contains("done") : null;
+        }
+
+        detectQuestionType(includeSolved = false) {
+            const gridSolved = this._checkIsSolvedFromGrid();
             const containers = this._getQuestionContainers();
+
             for (const container of containers) {
                 logger.debug(
-                    "Attempting to detect question type in container with class:",
+                    "Detecting in container with class:",
                     container.className || container.tagName
                 );
 
-                // Try Short Answer (New Type)
+                // Determine if this specific question is solved.
+                // We trust the grid if it exists, otherwise we fallback to internal scraping.
+
+                // 1. Try Short Answer
                 const short = this.scrapeShortAnswer(container);
-                if (short.blanks.length && !short.isSolved) {
-                    logger.info("Detected unsolved Short Answer.");
-                    return short;
+                const isShortSolved =
+                    gridSolved !== null ? gridSolved : short.isSolved;
+                if (short.blanks.length && (includeSolved || !isShortSolved)) {
+                    return { ...short, isSolved: isShortSolved };
                 }
 
-                // Try MCQ
+                // 2. Try MCQ
                 const mcq = this.scrapeMCQ(container);
-                if (mcq.options.length && !mcq.isSolved) {
-                    logger.info("Detected unsolved MCQ.");
-                    return mcq;
+                const isMcqSolved =
+                    gridSolved !== null ? gridSolved : mcq.isSolved;
+                if (mcq.options.length && (includeSolved || !isMcqSolved)) {
+                    return { ...mcq, isSolved: isMcqSolved };
                 }
 
-                // Try Fillable
+                // 3. Try Fillable
                 const fill = this.scrapeFillable(container);
-                if (fill.blanks.length && !fill.isSolved) {
-                    logger.info("Detected unsolved Fillable.");
-                    return fill;
+                const isFillSolved =
+                    gridSolved !== null ? gridSolved : fill.isSolved;
+                if (fill.blanks.length && (includeSolved || !isFillSolved)) {
+                    return { ...fill, isSolved: isFillSolved };
                 }
 
-                // Try True/False
-                const trueFalse = this.scrapeTrueFalse(container);
-                if (trueFalse.subQuestions.length && !trueFalse.isSolved) {
-                    logger.info("Detected unsolved True/False.");
-                    return trueFalse;
+                // 4. Try True/False
+                const tf = this.scrapeTrueFalse(container);
+                const isTfSolved =
+                    gridSolved !== null ? gridSolved : tf.isSolved;
+                if (tf.subQuestions.length && (includeSolved || !isTfSolved)) {
+                    return { ...tf, isSolved: isTfSolved };
                 }
             }
             return { type: "unknown" };
@@ -489,7 +505,7 @@
 
             const nodes = Array.from(
                 container.querySelectorAll(
-                    ".row.text-left.options .question-option, .list-selection .select-item"
+                    ".question-option, .select-item, .item-answer"
                 )
             );
 
@@ -499,9 +515,11 @@
                     let letter, text, contentNode;
                     const isSelected =
                         node.classList.contains("selected") ||
-                        node.classList.contains("active");
+                        node.classList.contains("active") ||
+                        node.classList.contains("highlighed") || // Misspelling on site
+                        node.classList.contains("highlighted") ||
+                        node.querySelector(".text-answered") !== null;
                     if (isSelected) isSolved = true;
-
                     if (node.matches(".question-option")) {
                         // Legacy format
                         logger.debug("Processing legacy MCQ option format.");
@@ -736,6 +754,7 @@
                         trueElement,
                         falseElement,
                         isAnswered,
+                        element: node, // Store the node for marking as done
                     };
                 })
                 .filter((sq) => sq.char || sq.text);
@@ -971,7 +990,7 @@
 
             this._simulateClick(submitButton);
             logger.debug("Clicked submit button");
-            await new Promise((r) => setTimeout(r, 1000)); // Delay for UI change
+            await new Promise((r) => setTimeout(r, 800)); // Delay for UI change
 
             const postText = (
                 submitButton.innerText ||
@@ -1049,14 +1068,43 @@
                     el.dispatchEvent(new Event("change", { bubbles: true }));
                 });
 
-            // Clear custom div-based active answers (True/False Test)
+            // Clear custom div-based active answers (MCQ/True/False)
+            const classesToRemove = [
+                "active-answer",
+                "selected",
+                "done",
+                "highlighed",
+                "highlighted",
+                "active",
+                "checked",
+                "active-answer-item",
+            ];
+
             document
-                .querySelectorAll(".active-answer, .selected, .option.done")
+                .querySelectorAll(
+                    classesToRemove.map((c) => `.${c}`).join(", ")
+                )
                 .forEach((el) => {
-                    el.classList.remove("active-answer", "selected", "done");
+                    el.classList.remove(...classesToRemove);
                 });
 
-            logger.info("All answers cleared.");
+            // Reset sidebar/bottom-bar grid indicators (done class)
+            document
+                .querySelectorAll(
+                    ".answer-sheet .option, .mobile-bottom-bar .number"
+                )
+                .forEach((el) => el.classList.remove("done"));
+
+            // Purge persistent visual indicators (like "Your answer" labels)
+            document
+                .querySelectorAll(".text-answered, .answer-label-checked")
+                .forEach((el) => el.remove());
+
+            // Reset question tracking so it can re-solve from the beginning
+            window._lastQNum = -1;
+            window._lastQId = -1;
+
+            logger.info("All answers cleared and tracking reset.");
             return true;
         }
     }
@@ -1172,6 +1220,14 @@
         }
 
         init() {
+            if (!document.body) {
+                logger.debug(
+                    "Document body not ready, waiting for load to init UI..."
+                );
+                window.addEventListener("DOMContentLoaded", () => this.init());
+                return;
+            }
+
             const styles = `
                 #hw-solver-overlay {
                     position: fixed;
@@ -1347,6 +1403,15 @@
         }
 
         async skipCurrentQuestion() {
+            // Ensure we don't leave it marked as "done" if we are skipping it
+            const activeGridItem = document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+            );
+            if (activeGridItem) activeGridItem.classList.remove("done");
+
+            const containers = this.scraper._getQuestionContainers();
+            containers.forEach((c) => c.classList.remove("done"));
+
             return await this.ui.clickSkip();
         }
 
@@ -1362,12 +1427,18 @@
             this.overlay.updateStatus("Detecting...", "#3498db");
             logger.debug("Starting new solve cycle.");
 
-            const detected = this.scraper.detectQuestionType();
+            // solveOnce is manual, so we include already solved questions
+            // from detection to ensure it re-processes the current page.
+            const detected = this.scraper.detectQuestionType(true);
             if (detected.type === "unknown") {
-                logger.info("No unsolved questions detected. Stopping solver.");
-                this.stop();
+                logger.info("No questions detected.");
+                this.overlay.updateStatus("No Questions", "#e74c3c");
                 return false;
             }
+
+            // For Manual solveOnce, we ignore the isSolved flag because the user
+            // explicitly asked us to solve whatever is in front of them.
+            // We only keep the flag for automatic scheduler loops.
 
             // Extract metadata from this specific container
             const container = detected.container || document;
@@ -1555,7 +1626,7 @@
 
         async _solveMCQ(questionData) {
             this.overlay.updateStatus("Thinking (MCQ)...", "#f39c12");
-            const { question, options, images } = questionData;
+            const { question, options, images, container } = questionData;
 
             const prompt = this._buildMCQPrompt(question, options);
             logger.debug("MCQ Prompt:", prompt);
@@ -1678,13 +1749,28 @@
 
             this.ui.selectOption(optionToSelect);
             await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
-            await this.ui.clickSubmit();
-            return true;
+            const gridItem = document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+            );
+            const submitted = await this.ui.clickSubmit();
+            if (submitted) {
+                await new Promise((r) => setTimeout(r, 1000));
+                if (container && container.isConnected) {
+                    container.classList.add("done");
+                }
+                if (gridItem) {
+                    gridItem.classList.add("done");
+                }
+
+                this.overlay.updateStatus("MCQ Solved", "#2ecc71");
+                return true;
+            }
+            return false;
         }
 
         async _solveFillable(questionData) {
             this.overlay.updateStatus("Thinking (Fillable)...", "#f39c12");
-            const { question, blanks, images } = questionData;
+            const { question, blanks, images, container } = questionData;
             if (blanks.length === 0) return false;
             const prompt = this._buildFillPrompt(question);
             logger.info("Fill Prompt:", prompt);
@@ -1702,13 +1788,28 @@
             this.overlay.updateStatus("Typing Answers...", "#3498db");
             await this.ui.fillBlank(blanks[0], answerText);
             await new Promise((r) => setTimeout(r, 1000));
-            await this.ui.clickSubmit();
-            return true;
+            const gridItem = document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+            );
+            const submitted = await this.ui.clickSubmit();
+            if (submitted) {
+                await new Promise((r) => setTimeout(r, 1000));
+                if (container && container.isConnected) {
+                    container.classList.add("done");
+                }
+                if (gridItem) {
+                    gridItem.classList.add("done");
+                }
+
+                this.overlay.updateStatus("Fillable Solved", "#2ecc71");
+                return true;
+            }
+            return false;
         }
 
         async _solveShortAnswer(questionData) {
             this.overlay.updateStatus("Thinking (Short)...", "#f39c12");
-            const { question, blanks, images } = questionData;
+            const { question, blanks, images, container } = questionData;
             if (blanks.length === 0) return false;
 
             // Use dedicated short-answer prompt with strict formatting
@@ -1729,13 +1830,29 @@
             // Short answer usually has one input field in the .answer div
             await this.ui.fillBlank(blanks[0], answerText);
             await new Promise((r) => setTimeout(r, 1000));
-            await this.ui.clickSubmit();
-            return true;
+            const gridItem = document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+            );
+            const submitted = await this.ui.clickSubmit();
+            if (submitted) {
+                await new Promise((r) => setTimeout(r, 1000));
+                if (container && container.isConnected) {
+                    container.classList.add("done");
+                }
+                if (gridItem) {
+                    gridItem.classList.add("done");
+                }
+
+                this.overlay.updateStatus("Short Answer Solved", "#2ecc71");
+                return true;
+            }
+            return false;
         }
 
         async _solveTrueFalse(questionData) {
             this.overlay.updateStatus("Thinking (T/F)...", "#f39c12");
-            const { question, subQuestions, images, table } = questionData;
+            const { question, subQuestions, images, table, container } =
+                questionData;
             if (subQuestions.length === 0) return false;
             const prompt = this._buildTrueFalsePrompt(
                 question,
@@ -1781,8 +1898,31 @@
             }
 
             await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
-            await this.ui.clickSubmit();
-            return true;
+            const gridItem = document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+            );
+            const submitted = await this.ui.clickSubmit();
+            if (submitted) {
+                await new Promise((r) => setTimeout(r, 1000));
+                // Mark individual rows as done
+                subQuestions.forEach((sq) => {
+                    if (sq.element && sq.element.isConnected) {
+                        sq.element.classList.add("done");
+                    }
+                });
+
+                if (container && container.isConnected) {
+                    container.classList.add("done");
+                }
+
+                if (gridItem) {
+                    gridItem.classList.add("done");
+                }
+
+                this.overlay.updateStatus("True/False Solved", "#2ecc71");
+                return true;
+            }
+            return false;
         }
     }
 
