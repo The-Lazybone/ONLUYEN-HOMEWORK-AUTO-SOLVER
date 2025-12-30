@@ -5,29 +5,28 @@
 
     // -------------- CONFIGURATION --------------
     const CONFIG = {
-        PROXY_URL: "https://gen.pollinations.ai/v1/chat/completions",
-        // Replace the POLL_KEY at runtime or build-time. Defaults to empty to avoid leaking secrets.
+        PROXY_URL:
+            localStorage.getItem("HW_SOLVER_PROXY_URL") ||
+            "https://gen.pollinations.ai/v1/chat/completions",
         POLL_KEY:
+            localStorage.getItem("HW_SOLVER_API_KEY") ||
             (typeof globalThis !== "undefined" &&
                 globalThis.__HW_SOLVER_POLL_KEY__) ||
-            (typeof localStorage !== "undefined" &&
-                localStorage.getItem("HW_SOLVER_API_KEY")) ||
-            (typeof globalThis !== "undefined" &&
-                globalThis.process &&
-                globalThis.process.env &&
-                globalThis.process.env.HW_SOLVER_POLL_KEY) ||
             "",
-        DEFAULT_MODEL: "gemini", // Default model for text-only prompts
-        VISION_MODEL: "gemini", // Model for prompts with images
+        DEFAULT_MODEL:
+            localStorage.getItem("HW_SOLVER_DEFAULT_MODEL") || "gemini",
+        VISION_MODEL:
+            localStorage.getItem("HW_SOLVER_VISION_MODEL") || "gemini",
         RETRIES: 3,
         PROXY_TIMEOUT_MS: 300000,
         LOOP_INTERVAL_MS: 4000,
         HUMAN_DELAY_MIN: 200,
         HUMAN_DELAY_MAX: 800,
-        LOG_LEVEL: "INFO", // 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE'
+        LOG_LEVEL: localStorage.getItem("HW_SOLVER_LOG_LEVEL") || "INFO",
         LOG_HISTORY_LIMIT: 100,
-        INSTANT_MODE: false, // New flag for instant typing
-        THINK_BEFORE_ANSWER: true, // When true, instruct model to think step-by-step and return a FINAL: answer
+        INSTANT_MODE: localStorage.getItem("HW_SOLVER_INSTANT_MODE") === "true",
+        THINK_BEFORE_ANSWER:
+            localStorage.getItem("HW_SOLVER_THINK_BEFORE_ANSWER") !== "false", // Default to true
     };
 
     // -------------- LOGGER CLASS --------------
@@ -1268,12 +1267,6 @@
                     cursor: pointer;
                     user-select: none;
                 }
-                #hw-solver-content {
-                    padding: 15px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                }
                 #hw-solver-status {
                     font-size: 14px;
                     font-weight: bold;
@@ -1306,6 +1299,7 @@
                     font-weight: bold;
                     transition: background 0.2s;
                     color: white;
+                    margin-bottom: 5px;
                 }
                 .hw-btn-start { background: #27ae60; }
                 .hw-btn-start:hover { background: #2ecc71; }
@@ -1318,9 +1312,69 @@
                 #hw-solver-toggle {
                     font-size: 12px;
                 }
+                #hw-tab-bar {
+                    display: flex;
+                    background: #34495e;
+                    border-bottom: 1px solid #2c3e50;
+                }
+                .hw-tab {
+                    flex: 1;
+                    padding: 8px;
+                    text-align: center;
+                    font-size: 11px;
+                    cursor: pointer;
+                    color: #bdc3c7;
+                    transition: all 0.2s;
+                }
+                .hw-tab.active {
+                    color: white;
+                    background: #2c3e50;
+                    border-bottom: 2px solid #3498db;
+                }
+                .hw-tab-content {
+                    padding: 15px;
+                    display: none;
+                    flex-direction: column;
+                    gap: 10px;
+                    max-height: 300px;
+                    overflow-y: auto;
+                }
+                .hw-tab-content.active {
+                    display: flex;
+                }
+                .hw-checkbox-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 12px;
+                    color: #ecf0f1;
+                    cursor: pointer;
+                    margin-top: 5px;
+                }
+                .hw-checkbox-group input {
+                    cursor: pointer;
+                }
+                .hw-footer {
+                    padding: 8px;
+                    background: #34495e;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #bdc3c7;
+                    border-top: 1px solid #2c3e50;
+                }
+                .hw-footer a {
+                    color: #3498db;
+                    text-decoration: none;
+                }
+                .hw-footer a:hover {
+                    text-decoration: underline;
+                }
                 .minimized {
                     height: 40px !important;
                     width: 120px !important;
+                }
+                .minimized #hw-tab-bar, .minimized .hw-tab-content, .minimized .hw-footer {
+                    display: none !important;
                 }
             `;
 
@@ -1336,16 +1390,57 @@
                     <span>AI Solver</span>
                     <span id="hw-solver-toggle">▼</span>
                 </div>
-                <div id="hw-solver-content">
+                <div id="hw-tab-bar">
+                    <div class="hw-tab active" data-tab="solver">Solver</div>
+                    <div class="hw-tab" data-tab="settings">Settings</div>
+                </div>
+                <div id="hw-solver-content" class="hw-tab-content active">
                     <div id="hw-solver-status">Status: Ready</div>
-                    <div class="hw-input-group">
-                        <label>API Key</label>
-                        <input type="password" class="hw-key-input" id="hw-api-key" placeholder="Enter key..." value="${CONFIG.POLL_KEY}">
-                    </div>
                     <button class="hw-btn hw-btn-start" id="hw-start-btn">Start Auto</button>
                     <button class="hw-btn hw-btn-once" id="hw-once-btn">Solve Once</button>
                     <button class="hw-btn hw-btn-stop" id="hw-stop-btn">Stop</button>
                     <button class="hw-btn hw-btn-clear" id="hw-clear-btn">Clear All</button>
+                </div>
+                <div id="hw-settings-content" class="hw-tab-content">
+                    <div class="hw-input-group">
+                        <label>API Key</label>
+                        <input type="password" class="hw-key-input hw-config-input" data-key="POLL_KEY" id="hw-api-key" placeholder="Enter key..." value="${
+                            CONFIG.POLL_KEY
+                        }">
+                    </div>
+                    <div class="hw-input-group">
+                        <label>Endpoint</label>
+                        <input type="text" class="hw-key-input hw-config-input" data-key="PROXY_URL" placeholder="https://..." value="${
+                            CONFIG.PROXY_URL
+                        }">
+                    </div>
+                    <div class="hw-input-group">
+                        <label>Text Model</label>
+                        <input type="text" class="hw-key-input hw-config-input" data-key="DEFAULT_MODEL" value="${
+                            CONFIG.DEFAULT_MODEL
+                        }">
+                    </div>
+                    <div class="hw-input-group">
+                        <label>Vision Model</label>
+                        <input type="text" class="hw-key-input hw-config-input" data-key="VISION_MODEL" value="${
+                            CONFIG.VISION_MODEL
+                        }">
+                    </div>
+                    <div class="hw-checkbox-group">
+                        <input type="checkbox" class="hw-config-check" data-key="INSTANT_MODE" id="hw-instant-check" ${
+                            CONFIG.INSTANT_MODE ? "checked" : ""
+                        }>
+                        <label for="hw-instant-check">Instant Mode</label>
+                    </div>
+                    <div class="hw-checkbox-group">
+                        <input type="checkbox" class="hw-config-check" data-key="THINK_BEFORE_ANSWER" id="hw-think-check" ${
+                            CONFIG.THINK_BEFORE_ANSWER ? "checked" : ""
+                        }>
+                        <label for="hw-think-check">Reasoning</label>
+                    </div>
+                </div>
+                <div class="hw-footer">
+                    Powered by <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a>
                 </div>
             `;
 
@@ -1354,6 +1449,22 @@
             }
 
             this.statusEl = this.container.querySelector("#hw-solver-status");
+
+            // Tab Switching Logic
+            this.container.querySelectorAll(".hw-tab").forEach((tab) => {
+                tab.onclick = () => {
+                    this.container
+                        .querySelectorAll(".hw-tab")
+                        .forEach((t) => t.classList.remove("active"));
+                    this.container
+                        .querySelectorAll(".hw-tab-content")
+                        .forEach((c) => c.classList.remove("active"));
+                    tab.classList.add("active");
+                    this.container
+                        .querySelector(`#hw-${tab.dataset.tab}-content`)
+                        .classList.add("active");
+                };
+            });
 
             this.container.querySelector("#hw-solver-header").onclick = () =>
                 this.toggleMinimize();
@@ -1366,15 +1477,38 @@
             this.container.querySelector("#hw-clear-btn").onclick = () =>
                 this.solver.clearAnswers();
 
-            const keyInput = this.container.querySelector("#hw-api-key");
-            keyInput.onchange = (e) => {
-                const newKey = e.target.value.trim();
-                CONFIG.POLL_KEY = newKey;
-                localStorage.setItem("HW_SOLVER_API_KEY", newKey);
-                logger.info("API Key updated and saved to localStorage.");
-                this.updateStatus("Key Saved", "#2ecc71");
-                setTimeout(() => this.updateStatus("Ready"), 2000);
-            };
+            // Config Auto-Save Logic
+            this.container
+                .querySelectorAll(".hw-config-input")
+                .forEach((input) => {
+                    input.onchange = (e) => {
+                        const key = input.dataset.key;
+                        const value = e.target.value.trim();
+                        CONFIG[key] = value;
+                        const storageKey =
+                            key === "POLL_KEY"
+                                ? "HW_SOLVER_API_KEY"
+                                : `HW_SOLVER_${key}`;
+                        localStorage.setItem(storageKey, value);
+                        logger.info(`${key} updated and saved.`);
+                        this.updateStatus("Settings Saved", "#2ecc71");
+                        setTimeout(() => this.updateStatus("Ready"), 2000);
+                    };
+                });
+
+            this.container
+                .querySelectorAll(".hw-config-check")
+                .forEach((check) => {
+                    check.onchange = (e) => {
+                        const key = check.dataset.key;
+                        const value = e.target.checked;
+                        CONFIG[key] = value;
+                        localStorage.setItem(`HW_SOLVER_${key}`, value);
+                        logger.info(`${key} toggled: ${value}`);
+                        this.updateStatus("Settings Saved", "#2ecc71");
+                        setTimeout(() => this.updateStatus("Ready"), 2000);
+                    };
+                });
         }
 
         updateStatus(text, color = "#ecf0f1") {
@@ -1959,6 +2093,7 @@
         scraper: solver.scraper, // Expose the scraper instance
         toggleInstantMode: () => {
             CONFIG.INSTANT_MODE = !CONFIG.INSTANT_MODE;
+            localStorage.setItem("HW_SOLVER_INSTANT_MODE", CONFIG.INSTANT_MODE);
             logger.info(
                 `Instant Mode toggled: ${CONFIG.INSTANT_MODE ? "ON" : "OFF"}`
             );
@@ -1966,6 +2101,10 @@
         },
         toggleThinkBeforeAnswer: () => {
             CONFIG.THINK_BEFORE_ANSWER = !CONFIG.THINK_BEFORE_ANSWER;
+            localStorage.setItem(
+                "HW_SOLVER_THINK_BEFORE_ANSWER",
+                CONFIG.THINK_BEFORE_ANSWER
+            );
             logger.info(
                 `Think-Before-Answer toggled: ${
                     CONFIG.THINK_BEFORE_ANSWER ? "ON" : "OFF"

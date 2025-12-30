@@ -15,8 +15,7 @@ An advanced, agentic browser automation tool engineered to solve complex academi
 *   **🖥️ Floating UI Dashboard**: A non-intrusive overlay with real-time status updates (`Thinking...`, `Typing...`, `Waiting...`) and dedicated control buttons.
 *   **💾 Persistent Configuration**: Integrated API key input field with `localStorage` persistence—no more manual console setup on every reload.
 *   **🧹 Smart Reset Loop**: "Clear All" feature that resets all page inputs and specialized status classes (like `done`), allowing for instant re-solving.
-*   **🐒 Tampermonkey Native**: Optimized with a dedicated loader script (`wrapper.user.js`) for seamless updates and execution.
-*   **🛡️ Resilient Interaction Engine**: 
+*   **️ Resilient Interaction Engine**: 
     *   **Interaction-First Solving**: Proceeds to the next question even on pages without individual "Submit" buttons.
     *   **Adaptive True/False Test Support**: Handles both classic input-based and modern div-based interactive components.
     *   **Fault-Tolerant Scraping**: Built-in validation to skip broken blobs and inaccessible image sources.
@@ -90,3 +89,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ---
 ~~*Developed with ❤️ for the automation community.*~~
 *Developed with hate for the school's exercises.*
+
+### ❤️ Special Thanks
+This project is powered by [Pollinations.ai](https://pollinations.ai), providing highly accessible and performant AI infrastructure for the automation community. 🚀
