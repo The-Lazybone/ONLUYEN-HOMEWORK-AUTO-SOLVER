@@ -88,4 +88,5 @@ This project is built using a decoupled modular architecture:
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
-*Developed with ❤️ for the automation community.*
+~~*Developed with ❤️ for the automation community.*~~
+*Developed with hate for the school's exercises.*

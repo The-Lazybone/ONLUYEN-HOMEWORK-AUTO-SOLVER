@@ -24,7 +24,7 @@
         LOOP_INTERVAL_MS: 4000,
         HUMAN_DELAY_MIN: 200,
         HUMAN_DELAY_MAX: 800,
-        LOG_LEVEL: "DEBUG", // 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE'
+        LOG_LEVEL: "INFO", // 'DEBUG', 'INFO', 'WARN', 'ERROR', 'NONE'
         LOG_HISTORY_LIMIT: 100,
         INSTANT_MODE: false, // New flag for instant typing
         THINK_BEFORE_ANSWER: true, // When true, instruct model to think step-by-step and return a FINAL: answer
@@ -997,7 +997,7 @@
                 submitButton.value ||
                 ""
             ).trim();
-            logger.info(`Post-submit button text: "${postText}"`);
+            logger.debug(`Post-submit button text: "${postText}"`);
 
             // Removed "Kết thúc" button check as per user request.
             // The question ID/number check will handle the end of the quiz.
@@ -1040,7 +1040,7 @@
                 skipButton.value ||
                 ""
             ).trim();
-            logger.info(`Post-skip button text: "${postSkipText}"`);
+            logger.debug(`Post-skip button text: "${postSkipText}"`);
 
             // Removed "Kết thúc" button check as per user request.
             // The question ID/number check will handle the end of the quiz.
@@ -1648,7 +1648,7 @@
             const { question, options, images, container } = questionData;
 
             const prompt = this._buildMCQPrompt(question, options);
-            logger.debug("MCQ Prompt:", prompt);
+            logger.info("MCQ Prompt:", prompt);
 
             // Collect all images: from the question and from each option
             const allImages = [...images];
@@ -1878,7 +1878,7 @@
                 subQuestions,
                 table
             );
-            logger.debug("True/False Prompt:", prompt);
+            logger.info("True/False Prompt:", prompt);
 
             const response = await this.api.call(prompt, images);
             this.lastApiResponse = response;
@@ -2046,7 +2046,7 @@
 
     // -------------- GUARDIAN LOOP (UI PERSISTENCE) --------------
     const startGuardian = (solverInstance) => {
-        logger.info("Guardian Loop started. Monitoring UI persistence...");
+        logger.debug("Guardian Loop started. Monitoring UI persistence...");
         const performCheck = () => {
             const overlay = document.getElementById("hw-solver-overlay");
             const styles = document.getElementById("hw-solver-styles");
