@@ -182,10 +182,6 @@
                     { role: "user", content: userContent },
                 ],
                 max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 65535 : 64,
-                thinking: {
-                    type: CONFIG.THINK_BEFORE_ANSWER ? "enabled" : "disabled",
-                    budget_tokens: 128000,
-                },
                 temperature: 1, // Changed to 1 as required by the model
                 tools: tools,
                 tool_choice: "auto",
@@ -406,6 +402,11 @@
             const containers = this._getQuestionContainers();
 
             for (const container of containers) {
+                // Skip containers already marked as done
+                if (!includeSolved && container.classList.contains("done")) {
+                    continue;
+                }
+
                 logger.debug(
                     "Detecting in container with class:",
                     container.className || container.tagName
@@ -1123,88 +1124,52 @@
             this.active = true;
             this.failureCount = 0;
             logger.info("Scheduler started.");
-            this._scheduleNext(true);
+            this._runTask(false); // Start with includeSolved=false to advance
         }
 
         stop() {
             if (!this.active) return;
             this.active = false;
-            clearTimeout(this.timer);
-            this.timer = null;
+            if (this.timer) {
+                clearTimeout(this.timer);
+                this.timer = null;
+            }
             logger.info("Scheduler stopped.");
         }
 
         _scheduleNext(isSuccess) {
             if (!this.active) return;
 
-            if (isSuccess) {
-                this.failureCount = 0;
-            } else {
-                this.failureCount++;
-                if (this.failureCount >= CONFIG.RETRIES) {
-                    logger.warn(
-                        `Max retries (${CONFIG.RETRIES}) reached for current question. Attempting to skip...`
-                    );
-                    if (this.solver.lastApiResponse) {
-                        logger.debug(
-                            "Raw API response at max retries:",
-                            JSON.stringify(this.solver.lastApiResponse)
-                        );
-                    }
-                    this.failureCount = 0;
-                    // Schedule an async skip action
-                    this.timer = setTimeout(async () => {
-                        try {
-                            const skipped =
-                                await this.solver.skipCurrentQuestion();
-                            if (skipped) {
-                                logger.info("Successfully skipped question.");
-                            } else {
-                                logger.warn(
-                                    "Could not find skip button, proceeding to next question."
-                                );
-                            }
-                            // Treat as success to advance
-                            this._scheduleNext(true);
-                        } catch (e) {
-                            logger.error("Skip attempt failed:", e);
-                            this._scheduleNext(true);
-                        }
-                    }, 0);
-                    return;
-                }
-            }
+            const delay = isSuccess
+                ? CONFIG.LOOP_INTERVAL_MS
+                : CONFIG.LOOP_INTERVAL_MS / 2;
 
-            const baseInterval = CONFIG.LOOP_INTERVAL_MS;
-            const jitter = Math.random() * 400;
-            let backoff = 0;
-            if (this.failureCount > 0) {
-                backoff = Math.min(
-                    1000 * Math.pow(2, this.failureCount - 1),
-                    30000
-                );
-            }
-
-            const delay = baseInterval + jitter + backoff;
-            if (this.solver.overlay && this.active) {
-                this.solver.overlay.updateStatus(
-                    `Waiting (${Math.round(delay / 1000)}s)`,
-                    "#2ecc71"
-                );
-            }
-            this.timer = setTimeout(() => this._runTask(), delay);
+            this.timer = setTimeout(() => this._runTask(false), delay);
         }
 
-        async _runTask(forceSuccessForScheduler = false) {
+        async _runTask(includeSolved = false) {
             if (!this.active) return;
-            let success = false;
+
             try {
-                success = await this.task();
+                const result = await this.task(includeSolved);
+                if (result) {
+                    this.failureCount = 0;
+                    this._scheduleNext(true);
+                } else {
+                    this.failureCount++;
+                    if (this.failureCount >= CONFIG.RETRIES) {
+                        logger.warn(`Max retries reached. Skipping question.`);
+                        await this.solver.skipCurrentQuestion();
+                        this.failureCount = 0;
+                        this._scheduleNext(true);
+                    } else {
+                        this._scheduleNext(false);
+                    }
+                }
             } catch (e) {
-                logger.error("Scheduled task failed", e);
-                success = false;
+                logger.error("Scheduled task execution failed:", e);
+                this._scheduleNext(false);
             }
-            this._scheduleNext(forceSuccessForScheduler || success);
         }
     }
 
@@ -1576,13 +1541,13 @@
             setTimeout(() => this.overlay.updateStatus("Ready"), 2000);
         }
 
-        async solveOnce() {
+        async solveOnce(includeSolved = true) {
             this.overlay.updateStatus("Detecting...", "#3498db");
             logger.debug("Starting new solve cycle.");
 
-            // solveOnce is manual, so we include already solved questions
-            // from detection to ensure it re-processes the current page.
-            const detected = this.scraper.detectQuestionType(true);
+            // solveOnce defaults to manual mode (includeSolved=true)
+            // But scheduler calls it with includeSolved=false to advance.
+            const detected = this.scraper.detectQuestionType(includeSolved);
             if (detected.type === "unknown") {
                 logger.info("No questions detected.");
                 this.overlay.updateStatus("No Questions", "#e74c3c");
@@ -1906,7 +1871,8 @@
                 ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
             );
             const submitted = await this.ui.clickSubmit();
-            if (submitted) {
+            if (submitted || !document.querySelector("button.btn-primary")) {
+                // Fail-safe: if no submit button, assume done
                 await new Promise((r) => setTimeout(r, 1000));
                 if (container && container.isConnected) {
                     container.classList.add("done");
@@ -1945,7 +1911,7 @@
                 ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
             );
             const submitted = await this.ui.clickSubmit();
-            if (submitted) {
+            if (submitted || !document.querySelector("button.btn-primary")) {
                 await new Promise((r) => setTimeout(r, 1000));
                 if (container && container.isConnected) {
                     container.classList.add("done");
@@ -1987,7 +1953,7 @@
                 ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
             );
             const submitted = await this.ui.clickSubmit();
-            if (submitted) {
+            if (submitted || !document.querySelector("button.btn-primary")) {
                 await new Promise((r) => setTimeout(r, 1000));
                 if (container && container.isConnected) {
                     container.classList.add("done");
@@ -2055,7 +2021,7 @@
                 ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
             );
             const submitted = await this.ui.clickSubmit();
-            if (submitted) {
+            if (submitted || !document.querySelector("button.btn-primary")) {
                 await new Promise((r) => setTimeout(r, 1000));
                 // Mark individual rows as done
                 subQuestions.forEach((sq) => {
