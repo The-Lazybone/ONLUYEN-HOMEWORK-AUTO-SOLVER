@@ -1,8 +1,8 @@
 # 🚀 Intelligent AI Homework Solver (v2.0)
 
+[![Built With pollinations.ai](https://img.shields.io/badge/Built%20with-Pollinations-8a2be2?style=for-the-badge&logo=data:image/svg+xml,%3Csvg%20xmlns%3D%22http://www.w3.org/2000/svg%22%20viewBox%3D%220%200%20124%20124%22%3E%3Ccircle%20cx%3D%2262%22%20cy%3D%2262%22%20r%3D%2262%22%20fill%3D%22%23ffffff%22/%3E%3C/svg%3E&logoColor=white&labelColor=6a0dad)](https://pollinations.ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Dynamic DOM](https://img.shields.io/badge/DOM-Adaptive-blueviolet)](https://developer.mozilla.org/en-US/docs/Web/API/Document_Object_Model)
-[![AI Powered](https://img.shields.io/badge/AI-Reasoning--Driven-orange)](https://pollinations.ai)
 
 An advanced, agentic browser automation tool engineered to solve complex academic problems on interactive platforms like `onluyen.vn`. Built with a focus on **DOM resilience**, **mathematical precision**, and **multimodal AI integration**.
 
@@ -91,4 +91,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 *Developed with hate for the school's exercises.*
 
 ### ❤️ Special Thanks
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pollinations/pollinations/main/assets/logo.svg" width="100" />
+  <br>
+  <img src="https://raw.githubusercontent.com/pollinations/pollinations/main/assets/logo-text.svg" width="300" />
+</p>
+
 This project is powered by [Pollinations.ai](https://pollinations.ai), providing highly accessible and performant AI infrastructure for the automation community. 🚀
