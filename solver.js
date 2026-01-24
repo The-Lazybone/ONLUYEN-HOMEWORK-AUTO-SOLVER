@@ -1055,6 +1055,7 @@
             document
                 .querySelectorAll("input[type='text'], textarea")
                 .forEach((el) => {
+                    if (el.closest("#hw-solver-overlay")) return;
                     el.value = "";
                     el.dispatchEvent(new Event("input", { bubbles: true }));
                     el.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1064,6 +1065,7 @@
             document
                 .querySelectorAll("input[type='radio'], input[type='checkbox']")
                 .forEach((el) => {
+                    if (el.closest("#hw-solver-overlay")) return;
                     el.checked = false;
                     el.dispatchEvent(new Event("change", { bubbles: true }));
                 });
@@ -1085,6 +1087,7 @@
                     classesToRemove.map((c) => `.${c}`).join(", "),
                 )
                 .forEach((el) => {
+                    if (el.closest("#hw-solver-overlay")) return;
                     el.classList.remove(...classesToRemove);
                 });
 
