@@ -12,7 +12,7 @@
 (function () {
     "use strict";
     const SCRIPT_URL =
-        "https://the-lazybone.github.io/ONLUYEN-HOMEWORK-AUTO-SOLVER/dist/solver.user.js";
+        "https://the-lazybone.github.io/ONLUYEN-HOMEWORK-AUTO-SOLVER/solver.js";
 
     const LOAD_DELAY = 2000; // 2 second delay
 
