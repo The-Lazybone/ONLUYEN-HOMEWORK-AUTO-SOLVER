@@ -9,23 +9,34 @@ export class UIController {
         } catch (e) {
             logger.debug("Scroll into view failed:", e);
         }
+
+        const events = ["mouseenter", "mouseover", "mousedown", "pointerdown", "mouseup", "pointerup", "click"];
+
+        events.forEach(evtType => {
+            try {
+                const isPointer = evtType.startsWith("pointer");
+                const EventClass = isPointer ? PointerEvent : MouseEvent;
+                const event = new EventClass(evtType, {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    button: 0,
+                    buttons: 1
+                });
+                el.dispatchEvent(event);
+            } catch (e) {
+                logger.debug(`Dispatch ${evtType} failed:`, e);
+            }
+        });
+
         try {
             el.focus?.();
-        } catch (e) {
-            logger.debug("Focus failed:", e);
-        }
-        try {
-            el.click();
-        } catch (e) {
-            logger.debug("Click failed:", e);
-        }
-        try {
             el.dispatchEvent(new Event("input", { bubbles: true }));
             el.dispatchEvent(new Event("change", { bubbles: true }));
         } catch (e) {
-            logger.debug("Dispatch event failed:", e);
+            logger.debug("Final events failed:", e);
         }
-        logger.debug("Simulated click on", el);
+        logger.debug("Simulated robust click on", el);
     }
 
     async _simulateTyping(element, text) {
@@ -107,10 +118,20 @@ export class UIController {
     selectOption(option) {
         if (!option || !option.element) return false;
         this._simulateClick(option.element);
-        const inputEl = option.element.querySelector("input");
+
+        // Find input radio, checking both children and siblings (in case option.element is a label or bubble)
+        let inputEl = option.element.querySelector("input[type='radio']");
+        if (!inputEl) {
+            const container = option.element.closest('.select-item, .question-option, .option, .item-answer');
+            if (container) {
+                inputEl = container.querySelector("input[type='radio']");
+            }
+        }
+
         if (inputEl) {
             inputEl.checked = true;
             inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+            inputEl.dispatchEvent(new Event("input", { bubbles: true }));
         }
         logger.debug("Selected option", option.letter);
         return true;
@@ -165,7 +186,7 @@ export class UIController {
             (b) => b.matches("button.btn.btn-lg.btn-block.ripple.btn-primary"),
             (b) => b.matches("button.btn-primary"),
             (b) => /trả lời|tra loi/i.test(b.innerText || b.value || ""),
-            (b) => (b.innerText || b.value || "").trim() === "Bỏ qua" || b.matches("button.btn-gray"),
+            // REMOVED "Bỏ qua" and "btn-gray" from here as they are SKIP buttons, not SUBMIT
             (b) => (b.innerText || b.value || "").trim() === "Submit",
             (b) => (b.innerText || b.value || "").trim() === "Check Answer",
             (b) => /submit/i.test(b.innerText || b.value || ""),

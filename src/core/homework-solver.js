@@ -6,6 +6,7 @@ import { UIController } from '../ui/ui-controller.js';
 import { WebSearch } from '../api/web-search.js';
 import { Scheduler } from './scheduler.js';
 import { BasicUI } from '../ui/dashboard.js';
+import { mathLogic } from './math-logic.js';
 
 export class HomeworkSolver {
     constructor() {
@@ -13,6 +14,7 @@ export class HomeworkSolver {
         this.scraper = new Scraper();
         this.ui = new UIController();
         this.webSearch = new WebSearch();
+        this.math = mathLogic;
         this.scheduler = new Scheduler(this.solveOnce.bind(this), this);
         this.lastApiResponse = null;
         this.overlay = new BasicUI(this);
@@ -216,13 +218,25 @@ export class HomeworkSolver {
         await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
-        if (submitted || !document.querySelector("button.btn-primary")) {
+
+        // Success if:
+        // 1. Submit button was found and clicked successfully
+        // 2. OR if the button is now gone AND the container is gone (likely navigation)
+        // 3. OR if the container specifically got marked as 'done' by internal site logic
+        if (submitted) {
             await new Promise((r) => setTimeout(r, 1000));
             if (container && container.isConnected) container.classList.add("done");
             if (gridItem) gridItem.classList.add("done");
             this.overlay.updateStatus("MCQ Solved", "#2ecc71");
             return true;
         }
+
+        // Fallback: Check if the question container is still in DOM or marked done
+        if (container && (!container.isConnected || container.classList.contains("done"))) {
+            if (gridItem) gridItem.classList.add("done");
+            return true;
+        }
+
         return false;
     }
 
@@ -239,11 +253,16 @@ export class HomeworkSolver {
         await new Promise((r) => setTimeout(r, 1000));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
-        if (submitted || !document.querySelector("button.btn-primary")) {
+        if (submitted) {
             await new Promise((r) => setTimeout(r, 1000));
             if (container && container.isConnected) container.classList.add("done");
             if (gridItem) gridItem.classList.add("done");
             this.overlay.updateStatus("Fillable Solved", "#2ecc71");
+            return true;
+        }
+
+        if (container && (!container.isConnected || container.classList.contains("done"))) {
+            if (gridItem) gridItem.classList.add("done");
             return true;
         }
         return false;
@@ -262,11 +281,16 @@ export class HomeworkSolver {
         await new Promise((r) => setTimeout(r, 1000));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
-        if (submitted || !document.querySelector("button.btn-primary")) {
+        if (submitted) {
             await new Promise((r) => setTimeout(r, 1000));
             if (container && container.isConnected) container.classList.add("done");
             if (gridItem) gridItem.classList.add("done");
             this.overlay.updateStatus("Short Answer Solved", "#2ecc71");
+            return true;
+        }
+
+        if (container && (!container.isConnected || container.classList.contains("done"))) {
+            if (gridItem) gridItem.classList.add("done");
             return true;
         }
         return false;
@@ -292,12 +316,17 @@ export class HomeworkSolver {
         await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
-        if (submitted || !document.querySelector("button.btn-primary")) {
+        if (submitted) {
             await new Promise((r) => setTimeout(r, 1000));
             subQuestions.forEach((sq) => { if (sq.element && sq.element.isConnected) sq.element.classList.add("done"); });
             if (container && container.isConnected) container.classList.add("done");
             if (gridItem) gridItem.classList.add("done");
             this.overlay.updateStatus("True/False Solved", "#2ecc71");
+            return true;
+        }
+
+        if (container && (!container.isConnected || container.classList.contains("done"))) {
+            if (gridItem) gridItem.classList.add("done");
             return true;
         }
         return false;

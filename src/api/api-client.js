@@ -1,7 +1,13 @@
 import { CONFIG } from '../constants.js';
 import { logger } from '../logger.js';
+import { mathLogic } from '../core/math-logic.js';
+import { WebSearch } from './web-search.js';
 
 export class APIClient {
+    constructor() {
+        this.webSearch = new WebSearch();
+    }
+
     async call(prompt, images = []) {
         if (!CONFIG.PROXY_URL) throw new Error("Proxy not configured");
 
@@ -15,79 +21,104 @@ export class APIClient {
 
         const modelToUse =
             images.length > 0 ? CONFIG.VISION_MODEL : CONFIG.DEFAULT_MODEL;
-        logger.debug(
-            `Using model: ${modelToUse} for prompt with ${images.length} images.`,
-        );
 
-        const tools = []; // Disable web_search for now
+        const tools = [
+            {
+                type: "function",
+                function: {
+                    name: "calculate",
+                    description: "Evaluate a mathematical expression using MathJS. Useful for complex arithmetic, algebra, and calculus.",
+                    parameters: {
+                        type: "object",
+                        properties: {
+                            expression: {
+                                type: "string",
+                                description: "The math expression to evaluate (e.g., '2 + 2', 'sqrt(16)', 'solve(2x = 4, x)')"
+                            }
+                        },
+                        required: ["expression"]
+                    }
+                }
+            }
+        ];
 
-        const payload = {
-            model: modelToUse,
-            reasoning_effort: CONFIG.THINK_BEFORE_ANSWER
-                ? "high"
-                : CONFIG.INSTANT_MODE
-                    ? "low"
-                    : "medium",
-            messages: [
-                {
-                    role: "system",
-                    content:
-                        "You are a precise assistant. Use the web_search tool when you need external information to answer accurately. Reply exactly as asked.",
-                },
-                { role: "user", content: userContent },
-            ],
-            max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 65535 : 64,
-            temperature: 1, // Changed to 1 as required by the model
-            tools: tools,
-            tool_choice: "auto",
-        };
-
-        // Optionally include a seed but ensure it's a safe 32-bit integer (some proxies validate this)
-        try {
-            const rawSeed = Date.now();
-            // Clamp to 32-bit signed integer
-            const seed = rawSeed & 0x7fffffff;
-            payload.seed = seed;
-            logger.debug("Using seed for request:", seed);
-        } catch (e) {
-            logger.debug(
-                "Seed generation failed, omitting seed from payload.",
-                e,
-            );
-        }
+        let messages = [
+            {
+                role: "system",
+                content: "You are a precise assistant. Use the 'calculate' tool for any mathematical operations to ensure accuracy. Reply exactly as asked.",
+            },
+            { role: "user", content: userContent },
+        ];
 
         const headers = { "Content-Type": "application/json" };
-        if (CONFIG.POLL_KEY)
-            headers["Authorization"] = `Bearer ${CONFIG.POLL_KEY}`;
+        if (CONFIG.POLL_KEY) headers["Authorization"] = `Bearer ${CONFIG.POLL_KEY}`;
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(
-            () => controller.abort(),
-            CONFIG.PROXY_TIMEOUT_MS,
-        );
+        let retryCount = 0;
+        const maxToolTurns = 5;
 
-        try {
-            const res = await fetch(CONFIG.PROXY_URL, {
-                method: "POST",
-                headers,
-                body: JSON.stringify(payload),
-                signal: controller.signal,
-            });
+        while (retryCount < maxToolTurns) {
+            const payload = {
+                model: modelToUse,
+                reasoning_effort: CONFIG.THINK_BEFORE_ANSWER ? "high" : (CONFIG.INSTANT_MODE ? "low" : "medium"),
+                messages: messages,
+                max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 65535 : 4096,
+                temperature: 1,
+                tools: tools,
+                tool_choice: "auto",
+            };
 
-            if (!res.ok) {
-                const txt = await res.text().catch(() => "");
-                throw new Error(`HTTP ${res.status}: ${txt}`);
-            }
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), CONFIG.PROXY_TIMEOUT_MS);
 
-            const rawText = await res.text();
             try {
-                return JSON.parse(rawText);
-            } catch {
-                logger.debug("Received non-JSON response:", rawText);
-                return rawText;
+                const res = await fetch(CONFIG.PROXY_URL, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify(payload),
+                    signal: controller.signal,
+                });
+
+                if (!res.ok) {
+                    const txt = await res.text().catch(() => "");
+                    throw new Error(`HTTP ${res.status}: ${txt}`);
+                }
+
+                const response = await res.json();
+                const message = response.choices?.[0]?.message;
+
+                if (!message) return response;
+
+                if (message.tool_calls && message.tool_calls.length > 0) {
+                    messages.push(message);
+
+                    for (const toolCall of message.tool_calls) {
+                        const functionName = toolCall.function.name;
+                        const args = JSON.parse(toolCall.function.arguments);
+                        let result = "";
+
+                        if (functionName === "calculate") {
+                            logger.info(`AI Tool - Calculate: ${args.expression}`);
+                            const evalResult = mathLogic.evaluate(args.expression);
+                            result = String(evalResult ?? "Error in calculation");
+                        }
+
+                        messages.push({
+                            role: "tool",
+                            tool_call_id: toolCall.id,
+                            name: functionName,
+                            content: result,
+                        });
+                    }
+                    retryCount++;
+                    continue;
+                }
+
+                return response;
+            } finally {
+                clearTimeout(timeoutId);
             }
-        } finally {
-            clearTimeout(timeoutId);
         }
+
+        throw new Error("Exceeded maximum tool call turns");
     }
 }

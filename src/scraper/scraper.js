@@ -78,7 +78,7 @@ export class Scraper {
     _getQuestionContainers() {
         return Array.from(
             document.querySelectorAll(
-                ".question-name, #step, app-question-short-answer, .question.fade-indown, .test-school-question-option, app-question-true-false-test, app-test-school-question-option",
+                ".question-name, #step, app-question-short-answer, app-question-multiple-choice, .question.fade-indown, .test-school-question-option, app-question-true-false-test, app-test-school-question-option",
             ),
         ).filter((el) => el.offsetParent !== null);
     }
@@ -208,7 +208,7 @@ export class Scraper {
             const tf = this.scrapeTrueFalse(container);
             const isTfSolved =
                 gridSolved !== null ? gridSolved : tf.isSolved;
-            if (tf.subQuestions.length && (includeSolved || !isTfSolved)) {
+            if (tf.subQuestions.length > 0 && (includeSolved || !isTfSolved)) {
                 return { ...tf, isSolved: isTfSolved };
             }
         }
@@ -253,17 +253,15 @@ export class Scraper {
             .trim();
 
         const images = [
-            ...this._scrapeImages(
-                container.querySelector(".question-text"),
-            ),
-            ...this._scrapeImages(
-                container.querySelector(".question-name"),
-            ),
+            ...this._scrapeImages(container.querySelector(".question-text")),
+            ...this._scrapeImages(container.querySelector(".question-name")),
+            ...this._scrapeImages(container.querySelector(".content-question")),
+            ...this._scrapeImages(container.querySelector(".fadein")),
         ];
 
         const nodes = Array.from(
             container.querySelectorAll(
-                ".question-option, .select-item, .item-answer",
+                ".question-option, .select-item, .item-answer, .option",
             ),
         );
 
@@ -274,25 +272,34 @@ export class Scraper {
                 const isSelected =
                     node.classList.contains("selected") ||
                     node.classList.contains("active") ||
+                    node.classList.contains("choose") ||
                     node.classList.contains("highlighed") ||
                     node.classList.contains("highlighted") ||
+                    node.querySelector(".active-answer") !== null ||
                     node.querySelector(".text-answered") !== null;
                 if (isSelected) isSolved = true;
+
+                let clickTarget = node;
                 if (node.matches(".question-option")) {
-                    letter =
-                        node
-                            .querySelector(".question-option-label")
-                            ?.innerText.trim() || null;
-                    contentNode = node.querySelector(
-                        ".question-option-content",
-                    );
+                    const bubble = node.querySelector(".question-option-label");
+                    letter = bubble?.innerText.trim() || null;
+                    if (bubble) clickTarget = bubble;
+
+                    contentNode = node.querySelector(".question-option-content");
                     text = this._getCleanedText(contentNode);
+                } else if (node.matches(".option")) {
+                    const bubble = node.querySelector(".item-answer, .number-item");
+                    letter = bubble?.innerText.trim().toUpperCase() || null;
+                    if (bubble) clickTarget = bubble;
+
+                    contentNode = node.querySelector(".option-content, label");
+                    text = this._getCleanedText(contentNode);
+                    if (node.querySelector(".active-answer") || node.classList.contains("choose")) isSolved = true;
                 } else {
-                    letter =
-                        node
-                            .querySelector(".number-item")
-                            ?.innerText.trim()
-                            .toUpperCase() || null;
+                    const bubble = node.querySelector(".number-item");
+                    letter = bubble?.innerText.trim().toUpperCase() || null;
+                    if (bubble) clickTarget = bubble;
+
                     contentNode = node.querySelector("label");
                     text = this._getCleanedText(contentNode);
                 }
@@ -300,13 +307,11 @@ export class Scraper {
                 return {
                     letter,
                     text,
-                    images: contentNode
-                        ? this._scrapeImages(contentNode)
-                        : [],
-                    element: node,
+                    images: contentNode ? this._scrapeImages(contentNode) : [],
+                    element: clickTarget,
                 };
             })
-            .filter((o) => o.letter);
+            .filter((o) => o.letter && o.letter.length === 1);
 
         return {
             type: "mcq",
@@ -504,7 +509,11 @@ export class Scraper {
                     element: node,
                 };
             })
-            .filter((sq) => sq.char || sq.text);
+            .filter(
+                (sq) =>
+                    (sq.char || sq.text) &&
+                    (sq.trueElement || sq.falseElement),
+            );
 
         const isSolved =
             subQuestions.length > 0 &&
