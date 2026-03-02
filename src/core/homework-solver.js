@@ -211,19 +211,29 @@ export class HomeworkSolver {
         let response = await this.api.call(prompt, uniqueImages);
         this.lastApiResponse = response;
         const letter = this._parseLetter(response);
-        if (!letter) return false;
+        logger.info(`LLM response parsed to: '${letter}'`); // Log parsed letter
+
+        if (!letter) {
+            logger.warn("Could not determine an answer from LLM.");
+            return false;
+        }
+
         const optionToSelect = options.find((o) => o.letter.toUpperCase() === letter.toUpperCase());
-        if (!optionToSelect) return false;
+        if (!optionToSelect) {
+            logger.warn(`LLM suggested option '${letter}' not found.`);
+            return false;
+        }
+
         this.ui.selectOption(optionToSelect);
         await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
 
-        // Success if:
-        // 1. Submit button was found and clicked successfully
-        // 2. OR if the button is now gone AND the container is gone (likely navigation)
+        // Fail-safe success if:
+        // 1. Submit button was clicked successfully
+        // 2. OR if NO primary submit button exists (common in test environment/one-by-one mode)
         // 3. OR if the container specifically got marked as 'done' by internal site logic
-        if (submitted) {
+        if (submitted || !document.querySelector("button.btn-primary")) {
             await new Promise((r) => setTimeout(r, 1000));
             if (container && container.isConnected) container.classList.add("done");
             if (gridItem) gridItem.classList.add("done");
@@ -248,12 +258,15 @@ export class HomeworkSolver {
         const response = await this.api.call(prompt, images);
         this.lastApiResponse = response;
         const answerText = this._parseFill(response);
+        logger.info(`LLM Fillable parsed to: '${answerText}'`);
+
         if (!answerText) return false;
         await this.ui.fillBlank(blanks[0], answerText);
         await new Promise((r) => setTimeout(r, 1000));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
-        if (submitted) {
+
+        if (submitted || !document.querySelector("button.btn-primary")) {
             await new Promise((r) => setTimeout(r, 1000));
             if (container && container.isConnected) container.classList.add("done");
             if (gridItem) gridItem.classList.add("done");
@@ -276,12 +289,15 @@ export class HomeworkSolver {
         const response = await this.api.call(prompt, images);
         this.lastApiResponse = response;
         const answerText = this._parseFill(response);
+        logger.info(`LLM Short Answer parsed to: '${answerText}'`);
+
         if (!answerText) return false;
         await this.ui.fillBlank(blanks[0], answerText);
         await new Promise((r) => setTimeout(r, 1000));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
-        if (submitted) {
+
+        if (submitted || !document.querySelector("button.btn-primary")) {
             await new Promise((r) => setTimeout(r, 1000));
             if (container && container.isConnected) container.classList.add("done");
             if (gridItem) gridItem.classList.add("done");
@@ -304,6 +320,8 @@ export class HomeworkSolver {
         const response = await this.api.call(prompt, images);
         this.lastApiResponse = response;
         const parsedAnswers = this._parseTrueFalse(response, subQuestions);
+        logger.info(`LLM True/False parsed to: '${JSON.stringify(parsedAnswers)}'`);
+
         if (parsedAnswers.length !== subQuestions.length || parsedAnswers.some((a) => a.value === null)) return false;
         let allSelected = true;
         for (const sq of subQuestions) {
@@ -316,7 +334,8 @@ export class HomeworkSolver {
         await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
         const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
         const submitted = await this.ui.clickSubmit();
-        if (submitted) {
+
+        if (submitted || !document.querySelector("button.btn-primary")) {
             await new Promise((r) => setTimeout(r, 1000));
             subQuestions.forEach((sq) => { if (sq.element && sq.element.isConnected) sq.element.classList.add("done"); });
             if (container && container.isConnected) container.classList.add("done");

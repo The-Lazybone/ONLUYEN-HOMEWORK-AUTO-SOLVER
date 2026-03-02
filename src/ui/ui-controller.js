@@ -119,12 +119,12 @@ export class UIController {
         if (!option || !option.element) return false;
         this._simulateClick(option.element);
 
-        // Find input radio, checking both children and siblings (in case option.element is a label or bubble)
-        let inputEl = option.element.querySelector("input[type='radio']");
+        // Support both radio and checkbox, and look deeper
+        let inputEl = option.element.querySelector("input");
         if (!inputEl) {
-            const container = option.element.closest('.select-item, .question-option, .option, .item-answer');
+            const container = option.element.closest('.question-option, .select-item, .item-answer, .option');
             if (container) {
-                inputEl = container.querySelector("input[type='radio']");
+                inputEl = container.querySelector("input");
             }
         }
 
