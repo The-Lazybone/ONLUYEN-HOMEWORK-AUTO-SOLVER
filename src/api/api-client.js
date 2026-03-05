@@ -61,11 +61,16 @@ export class APIClient {
                 model: modelToUse,
                 reasoning_effort: CONFIG.THINK_BEFORE_ANSWER ? "high" : (CONFIG.INSTANT_MODE ? "low" : "medium"),
                 messages: messages,
-                max_tokens: CONFIG.THINK_BEFORE_ANSWER ? 65535 : 4096,
+                max_tokens: 4096, // Safe limit for non-streaming requests
                 temperature: 1,
                 tools: tools,
                 tool_choice: "auto",
             };
+
+            // Use max_completion_tokens if using reasoning models (if THINK_BEFORE_ANSWER is on)
+            if (CONFIG.THINK_BEFORE_ANSWER) {
+                payload.max_completion_tokens = 65535;
+            }
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), CONFIG.PROXY_TIMEOUT_MS);
