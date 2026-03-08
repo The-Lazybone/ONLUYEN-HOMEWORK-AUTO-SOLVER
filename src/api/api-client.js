@@ -61,31 +61,52 @@ export class APIClient {
                 model: modelToUse,
                 reasoning_effort: CONFIG.THINK_BEFORE_ANSWER ? "high" : (CONFIG.INSTANT_MODE ? "low" : "medium"),
                 messages: messages,
-                max_tokens: 4096, // Safe limit for non-streaming requests
                 temperature: 1,
                 tools: tools,
                 tool_choice: "auto",
             };
 
-            // Use max_completion_tokens if using reasoning models (if THINK_BEFORE_ANSWER is on)
+            // Start by assuming max_completion_tokens is supported for thinking models
             if (CONFIG.THINK_BEFORE_ANSWER) {
                 payload.max_completion_tokens = 65535;
+            } else {
+                payload.max_tokens = 4096;
             }
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), CONFIG.PROXY_TIMEOUT_MS);
 
             try {
-                const res = await fetch(CONFIG.PROXY_URL, {
+                let res = await fetch(CONFIG.PROXY_URL, {
                     method: "POST",
                     headers,
                     body: JSON.stringify(payload),
                     signal: controller.signal,
                 });
 
+                // If it fails because both are somehow specified or max_completion_tokens is unsupported
                 if (!res.ok) {
                     const txt = await res.text().catch(() => "");
-                    throw new Error(`HTTP ${res.status}: ${txt}`);
+
+                    if (res.status === 400 && (txt.includes("cannot specify both max_tokens and max_completion_tokens") || txt.includes("max_completion_tokens"))) {
+                        logger.warn("API rejected max_completion_tokens. Retrying with max_tokens only.");
+                        delete payload.max_completion_tokens;
+                        payload.max_tokens = 4096;
+
+                        res = await fetch(CONFIG.PROXY_URL, {
+                            method: "POST",
+                            headers,
+                            body: JSON.stringify(payload),
+                            signal: controller.signal,
+                        });
+
+                        if (!res.ok) {
+                            const newTxt = await res.text().catch(() => "");
+                            throw new Error(`HTTP ${res.status}: ${newTxt}`);
+                        }
+                    } else {
+                        throw new Error(`HTTP ${res.status}: ${txt}`);
+                    }
                 }
 
                 const response = await res.json();
