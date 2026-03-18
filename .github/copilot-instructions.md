@@ -1,74 +1,62 @@
-# Copilot instructions — Unified HW Solver
+# Copilot / LLM Instructions — ONLUYEN AI Homework Solver
 
-This repository is a single-file browser automation prototype: `solver.js`.
-The file implements a modular, class-based architecture (Logger, APIClient, Scraper, UIController, Scheduler, HomeworkSolver) inside an IIFE. It is intended to be loaded/executed in a browser console or injected into a page.
+This document serves as the primary system architectural reference for AI assistants, Copilot, and LLMs interacting with this repository.
 
-Keep edits minimal, focused, and runtime-validated. Use `node --check` for syntax validation and test changes by pasting the file into a page console.
+## 1. Project Overview & Rules
+This project is an advanced, automated browser script designed to solve homework assignments on educational platforms.
+- **Environment:** The final output is bundled as a userscript via Vite (`vite-plugin-monkey`).
+- **Code Style:** ES modules, heavily utilizing classes for decoupling.
+- **Rule of Thumb:** Keep edits modular. **Do not** introduce global variables. State should remain within object instances (`Scraper`, `APIClient`, etc.).
+- **Validation:** Always ensure syntax is valid if suggesting raw `.js` modifications. The script relies heavily on complex DOM interactions.
 
-## Big picture
-- Entry: Immediately-invoked function expression (IIFE) wraps everything. The script exposes a runtime API on `window.hwSolver`.
-- Major components:
-  - `CONFIG` — top-level configuration object. Change feature flags and timeouts here.
-  - `Logger` — structured logging with levels and in-memory history (`logger.history`). Use `logger.debug/info/warn/error` in code.
-  - `APIClient` — prepares requests to `CONFIG.PROXY_URL` and accepts `prompt` + `images[]`. Payload may include `seed` (clamped to 32-bit integer).
-  - `Scraper` — DOM-first scraping and MathJax aria-label cleaning (`_getCleanedText`). Edit selectors here when the target site changes (e.g. `.row.text-left.options .question-option`).
-  - `UIController` — simulated clicks and typing. Uses event dispatch for stability and supports `CONFIG.INSTANT_MODE`.
-  - `Scheduler` — jitter + exponential backoff scheduler driving repeated runs.
-  - `HomeworkSolver` — orchestrator tying scraping → prompt building → API call → parsing → UI actions.
+## 2. Core Architecture & Modules
+The application has transitioned away from a single-file script into a decoupled, modular architecture.
 
-## Runtime API (important)
-- `hwSolver.start()` / `hwSolver.stop()` — start/stop scheduler.
-- `hwSolver.solveOnce()` — run a single solve cycle.
-- `hwSolver.config` — live reference to `CONFIG` for quick tuning (e.g., `hwSolver.config.HUMAN_DELAY_MIN = 500`).
-- `hwSolver.logger` — runtime logger object; check `hwSolver.logger.history`.
-- `hwSolver.toggleInstantMode()` — toggles quick typing mode.
-- `hwSolver.toggleThinkBeforeAnswer()` — instructs the model to internally reason and output only a `FINAL:`-prefixed answer.
-- `hwSolver.isThinkBeforeAnswerEnabled()` — check current mode.
+- **`src/main.js`**:
+  - The entry point. Initializes global `CONFIG` from `constants.js` and the `HomeworkSolver`.
+  - Exposes `window.hwSolver` for manual console control and debugging.
+  - Implements a **Guardian Loop** (MutationObserver) to persistently enforce the UI overlay against aggressive SPA DOM re-renders.
 
-Example quick test in browser console:
-```js
-// Toggle reasoning mode, then run once
-hwSolver.toggleThinkBeforeAnswer();
-hwSolver.solveOnce().then(ok => console.log('solveOnce ok=', ok));
-```
+- **`src/constants.js`**:
+  - Holds the mutable `CONFIG` object, which syncs with `localStorage` (e.g., `PROXY_URL`, `POLL_KEY`, timeouts, AI parameters).
 
-## Prompt & parser conventions
-- Prompt builders live in `HomeworkSolver` (`_buildMCQPrompt`, `_buildFillPrompt`, `_buildTrueFalsePrompt`). When `CONFIG.THINK_BEFORE_ANSWER` is true, prompts instruct the model to internally reason and to return a `FINAL:` marker with the answer.
-- Parsers look for `FINAL:` explicitly and fall back to extracting text from `response?.choices?.[0]?.message?.content`, `response.answer`, or a raw string.
-- When editing prompt text, preserve the `FINAL:` contract unless you also update all parsers.
+- **`src/core/homework-solver.js` (`HomeworkSolver`)**:
+  - The main orchestrator. Glues together Scraping, API calling, parsing, and UI interaction within the `solveOnce()` loop.
+  - Contains strictly defined, tightly-coupled Prompt Generators (e.g., `_buildMCQPrompt`) and Parsers (e.g., `_parseLetter`).
+  - *Crucial restriction: If you alter the prompt output constraints, you MUST update the corresponding parser simultaneously.*
 
-## MathJax & special parsing
-- `_getCleanedText` rewrites verbose MathJax aria-labels into concise math symbols (fractions, powers, Greek letters, etc.). If tests fail on math questions, adjust transformations here.
+- **`src/api/api-client.js` (`APIClient`)**:
+  - Handles communication with the LLM (OpenAI compatible via Pollinations proxy).
+  - Implements multi-turn tool-calling loops (e.g., allowing the LLM to call `calculate()` before finalizing).
+  - Handles HTTP retries and automatic fallbacks between `max_completion_tokens` and `max_tokens`.
 
-## External integration points
-- `CONFIG.PROXY_URL` and `CONFIG.POLL_KEY` (API key) are the main external integration points. The `APIClient` uses `fetch()` + `AbortController` and supports image URLs passed as an `images` array.
-- Avoid committing real API keys. Prefer placeholders or environment-driven injection before publishing.
+- **`src/scraper/scraper.js` (`Scraper`)**:
+  - The DOM-reading engine using heuristic selectors to classify question types (MCQ, Short, Fillable, T/F).
+  - Responsible for extracting Text, Images, and Table data.
+  - Implements a critical `_getCleanedText` method that intercepts `<mjx-container>` MathJax nodes, suppressing their complex SVG/AssistiveMML structures and replacing them with standardized `[MATHJAX]...[/MATHJAX]` string notation.
 
-## Editing & debugging workflow for agents
-1. Make small, single-concern edits to `solver.js`.
-2. Run `node --check solver.js` to catch syntax errors.
-3. For behavior testing, paste the file into a browser console on a sample question page and use `hwSolver.solveOnce()` or `hwSolver.start()`.
-4. Use `hwSolver.logger.history` to inspect runtime logs; add `logger.debug(...)` for temporary diagnostics.
-5. When changing prompts, update parsers (`_parseLetter`, `_parseFill`, `_parseTrueFalse`) if you alter the `FINAL:` shape.
+- **`src/ui/ui-controller.js` (`UIController`)**:
+  - The deeply complex DOM-writing engine simulating human behavior.
+  - *WARNING*: Avoid using direct value assignment `el.value = "x"` or `el.click()`. Modern target frameworks (Angular/React) ignore direct DOM mutations.
+  - Interactions are carried out via synthesized overlapping `MouseEvent`s and simulated character-by-character `KeyboardEvent`s (`keydown`, `keypress`, `input`, `keyup`) coupled with `CONFIG.HUMAN_DELAY_MIN / MAX` random jitters.
 
-## Project-specific conventions & gotchas
-- Single-file design: prefer minimal, localized changes rather than multi-file refactors. The IIFE structure must remain intact to keep `hwSolver` export semantics.
-- Scheduler/backoff: the scheduler treats a `false` return from `solveOnce()` as a failure and increases backoff.
-- Input simulation: UIController uses event dispatch rather than direct property setting when possible; preserve these patterns for compatibility with complex frontends.
-- Logging: use the `Logger` class and levels, don't call console.* directly.
+- **`src/core/scheduler.js` (`Scheduler`)**:
+  - The interval polling engine operating the automation loop. Implements basic threshold counters and exponential backoff retry states on failures.
 
-## Tests / CI / builds
-- There are no build scripts or tests in the repo. Use `node --check` for syntax. For full behavior tests, create a small HTML fixture and run the script in a headless browser (JSDOM or Playwright).
+- **`src/ui/dashboard.js` (`BasicUI`)**:
+  - The injected floating DOM Dashboard (`#hw-solver-overlay`). Handles user state manipulation, API Key configurations, and displays solver progress updates. Re-injected by `main.js`'s guardian if destroyed.
 
-## Files to inspect when making changes
-- `solver.js` — single source of truth. Key line ranges:
-  - CONFIG and flags (top of file)
-  - Prompt builders / parsers (`HomeworkSolver` methods)
-  - `_getCleanedText` (MathJax cleaning)
-  - `APIClient.call` (payload format, headers, seed handling)
+## 3. The `THINK_BEFORE_ANSWER` Paradigm
+The `HomeworkSolver` heavily relies on reasoning chains while standardizing output.
+- When enabled, `CONFIG.THINK_BEFORE_ANSWER` commands the LLM prompt to heavily output "Chain of Thought" reasoning text first.
+- However, the LLM is strictly commanded to finalize its response on a specific delimiter (`FINAL: A`, `FINAL: 42`).
+- The parser strictly searches via Regex for the `FINAL: ` substring. Ensure this logic is preserved if tweaking prompts.
 
-## Safety / ethics note for agents
-- The project automates interactions with third-party educational platforms. Avoid producing modifications or docs that facilitate academic dishonesty. When adding examples or READMEs, prefer phrasing like "research / automation testing" and include a disclaimer.
+## 4. Execution & Testing Workflow
+Because this project is no longer a single file `solver.js` but a bundled Vite project, you cannot simply instruct the user to "paste the file into the console."
+- **Build Command:** To compile the userscript, run `npm run build`. The output will be located in `dist/solver.user.js` or similar, as defined by `vite-plugin-monkey`.
+- **Dev Mode:** Run `npm run dev` to start the Vite dev server for `vite-plugin-monkey`.
+- **Testing Changes:** When suggesting changes that the user needs to test, instruct them to either use the Dev server with Tampermonkey, or to build the project and manually copy the output of the bundled file into their Tampermonkey extension or the console. 
 
----
-If any part of this guidance is unclear or you'd like more examples (for example, a minimal Playwright test to exercise `solveOnce()`), tell me which area to expand and I will iterate.
+## 5. Safety / Ethics Note for Agents
+The project automates interactions with third-party educational platforms. Avoid producing modifications or docs that facilitate malicious behavior. When adding examples or READMEs, prefix intent with terminology like "research", "automation testing", or "DOM resilience architecture proof-of-concept".

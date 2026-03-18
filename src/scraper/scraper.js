@@ -324,12 +324,20 @@ export class Scraper {
     }
 
     scrapeShortAnswer(container) {
-        if (
-            !container ||
-            !container.querySelector(
-                "app-question-short-answer, .content-question",
-            )
-        ) {
+        if (!container) {
+            return {
+                type: "shortanswer",
+                question: "",
+                blanks: [],
+                images: [],
+                isSolved: false,
+            };
+        }
+
+        const hasShortAnswerClass = container.querySelector("app-question-short-answer, .content-question");
+        const hasTextarea = container.querySelector("textarea");
+
+        if (!hasShortAnswerClass && !hasTextarea) {
             return {
                 type: "shortanswer",
                 question: "",
