@@ -42,6 +42,19 @@ export class UIController {
     async _simulateTyping(element, text) {
         if (!element || !text) return;
 
+        // NEW: Check if the element is hidden. Typing (focus/events) usually fails on hidden elements.
+        const style = window.getComputedStyle(element);
+        const isHidden = style.display === 'none' || style.visibility === 'hidden' || element.offsetParent === null;
+
+        if (isHidden) {
+            logger.debug("Simulating typing on hidden element via direct value assignment");
+            element.value = text;
+            element.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+            element.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+            element.dispatchEvent(new Event("blur", { bubbles: true, composed: true }));
+            return;
+        }
+
         element.dispatchEvent(
             new MouseEvent("mouseover", { bubbles: true, composed: true }),
         );
@@ -138,13 +151,14 @@ export class UIController {
     }
 
     async fillBlank(blank, text) {
-        if (!blank || !blank.element) return false;
+        if (!blank || !blank.element || !text) return false;
         const el = blank.element;
 
-        const isTinyMce = (el.id && el.id.includes('tiny')) || el.closest('app-tinymce-textarea, editor');
+        // 1. Check for TinyMCE rich text editor
+        const isTinyMce = (el.id && el.id.includes('tiny')) || el.closest('app-tinymce-textarea, editor, .tox-tinymce');
         if (isTinyMce) {
-            logger.debug("Detected TinyMCE textarea, attempting iframe injection");
-            const wrapper = el.closest('app-tinymce-textarea') || el.closest('editor') || el.parentElement;
+            logger.debug("Detected TinyMCE textarea/editor container");
+            const wrapper = el.closest('app-tinymce-textarea') || el.closest('editor') || el.closest('.tox-tinymce') || el.parentElement;
             if (wrapper) {
                 const iframe = wrapper.querySelector('iframe.tox-edit-area__iframe') || wrapper.querySelector('iframe');
                 if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
@@ -152,28 +166,57 @@ export class UIController {
                     iframe.contentDocument.body.innerHTML = htmlText;
                     
                     // Dispatch events inside iframe to notify TinyMCE's internal bindings
-                    iframe.contentDocument.body.dispatchEvent(new Event("input", { bubbles: true }));
-                    iframe.contentDocument.body.dispatchEvent(new Event("keyup", { bubbles: true }));
+                    iframe.contentDocument.body.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+                    iframe.contentDocument.body.dispatchEvent(new Event("keyup", { bubbles: true, composed: true }));
+                    iframe.contentDocument.body.dispatchEvent(new Event("blur", { bubbles: true, composed: true }));
                     
                     // Force sync the underlying textarea so Angular picks up the model change
-                    el.value = htmlText;
-                    el.dispatchEvent(new Event("input", { bubbles: true }));
-                    el.dispatchEvent(new Event("change", { bubbles: true }));
+                    el.value = text; // Usually Angular model expects text here, TinyMCE handles HTML sync later
+                    el.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+                    el.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
                     
-                    logger.debug("Filled TinyMCE iframe with:", text);
+                    logger.debug("Filled TinyMCE iframe and synced textarea with:", text);
                     return true;
                 } else {
-                    logger.warn("TinyMCE iframe found but contentDocument is inaccessible (possibly cross-origin). Falling back...");
+                    logger.warn("TinyMCE found but iframe content is inaccessible. Will attempt fallback typing...");
                 }
             }
         }
+
+        // 2. Fallback for hidden elements (which might be managed by other editors like CKEditor/Angular components)
+        const style = window.getComputedStyle(el);
+        const isHidden = style.display === 'none' || style.visibility === 'hidden' || el.offsetParent === null;
+
+        if (isHidden) {
+            logger.debug("Target element is hidden. Searching for visible editor sibling...");
+            const container = el.parentElement;
+            if (container) {
+                const visibleSibling = Array.from(container.children).find(child => child !== el && (child.offsetParent !== null || child.getAttribute('contenteditable') === 'true'));
+                if (visibleSibling) {
+                    logger.debug("Found visible sibling editor, attempting to focus/type...");
+                    if (visibleSibling.getAttribute('contenteditable') === 'true') {
+                        visibleSibling.focus();
+                        visibleSibling.innerText = text;
+                        visibleSibling.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+                        visibleSibling.dispatchEvent(new Event("blur", { bubbles: true, composed: true }));
+                        
+                        // Still sync the underlying hidden textarea
+                        el.value = text;
+                        el.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+                        return true;
+                    }
+                }
+            }
+        }
+
         try {
             await this._simulateTyping(el, text);
-            if (el.value !== text) {
+            // Verify value if visible
+            if (el.offsetParent !== null && el.value !== text) {
                 logger.warn("Failed to set input value via typing simulation.");
                 return false;
             }
-            logger.debug("Filled blank with:", text);
+            logger.debug("Filled blank/textarea with:", text);
             return true;
         } catch (e) {
             logger.error("fillBlank error", e);

@@ -20,6 +20,24 @@ export class HomeworkSolver {
         this.overlay = new BasicUI(this);
     }
 
+    _getGridItem(num) {
+        if (!num)
+            return document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active",
+            );
+        const gridItems = document.querySelectorAll(
+            ".answer-sheet .option, .mobile-bottom-bar .number",
+        );
+        return (
+            Array.from(gridItems).find(
+                (el) => el.innerText.trim() === String(num),
+            ) ||
+            document.querySelector(
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active",
+            )
+        );
+    }
+
     start() {
         this.scheduler.start();
         this.overlay.updateStatus("Running", "#27ae60");
@@ -65,20 +83,23 @@ export class HomeworkSolver {
         }
 
         const container = detected.container || document;
-        const header = container.querySelector(".question-header, .quetion-number, .num");
-
-        let currentNum = null;
+        let currentNum = detected.number;
         let currentId = container.id || null;
 
-        if (header) {
-            const text = header.innerText.trim();
-            const numMatch = text.match(/Câu:?\s*(\d+)/i);
-            if (numMatch) currentNum = parseInt(numMatch[1], 10);
+        if (!currentNum) {
+            const header = container.querySelector(
+                ".question-header, .quetion-number, .num",
+            );
+            if (header) {
+                const text = header.innerText.trim();
+                const numMatch = text.match(/Câu:?\s*(\d+)/i);
+                if (numMatch) currentNum = parseInt(numMatch[1], 10);
 
-            const idElement = header.querySelector("span, .num span");
-            if (idElement) {
-                const idMatch = idElement.innerText.match(/#(\d+)/);
-                if (idMatch) currentId = idMatch[1];
+                const idElement = header.querySelector("span, .num span");
+                if (idElement) {
+                    const idMatch = idElement.innerText.match(/#(\d+)/);
+                    if (idMatch) currentId = idMatch[1];
+                }
             }
         }
 
@@ -226,7 +247,7 @@ export class HomeworkSolver {
 
         this.ui.selectOption(optionToSelect);
         await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
-        const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
+        const gridItem = this._getGridItem(questionData.number);
         const submitted = await this.ui.clickSubmit();
 
         // Fail-safe success if:
@@ -263,7 +284,7 @@ export class HomeworkSolver {
         if (!answerText) return false;
         await this.ui.fillBlank(blanks[0], answerText);
         await new Promise((r) => setTimeout(r, 1000));
-        const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
+        const gridItem = this._getGridItem(questionData.number);
         const submitted = await this.ui.clickSubmit();
 
         if (submitted || !document.querySelector("button.btn-primary")) {
@@ -294,7 +315,7 @@ export class HomeworkSolver {
         if (!answerText) return false;
         await this.ui.fillBlank(blanks[0], answerText);
         await new Promise((r) => setTimeout(r, 1000));
-        const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
+        const gridItem = this._getGridItem(questionData.number);
         const submitted = await this.ui.clickSubmit();
 
         if (submitted || !document.querySelector("button.btn-primary")) {
@@ -332,7 +353,7 @@ export class HomeworkSolver {
         }
         if (!allSelected) return false;
         await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
-        const gridItem = document.querySelector(".answer-sheet .option.active, .mobile-bottom-bar .number.active");
+        const gridItem = this._getGridItem(questionData.number);
         const submitted = await this.ui.clickSubmit();
 
         if (submitted || !document.querySelector("button.btn-primary")) {

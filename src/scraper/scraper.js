@@ -144,11 +144,34 @@ export class Scraper {
         return table ? table.outerHTML : null;
     }
 
-    _checkIsSolvedFromGrid() {
+    _checkIsSolvedFromGrid(questionNum = null) {
+        if (questionNum) {
+            const gridItems = document.querySelectorAll(
+                ".answer-sheet .option, .mobile-bottom-bar .number",
+            );
+            const specific = Array.from(gridItems).find(
+                (el) => el.innerText.trim() === String(questionNum),
+            );
+            if (specific) return specific.classList.contains("done");
+        }
+
         const active = document.querySelector(
             ".answer-sheet .option.active, .mobile-bottom-bar .number.active",
         );
         return active ? active.classList.contains("done") : null;
+    }
+
+    _getQuestionNumber(container) {
+        if (!container) return null;
+        const header = container.querySelector(
+            ".question-header, .quetion-number, .num",
+        );
+        if (header) {
+            const text = header.innerText.trim();
+            const numMatch = text.match(/Câu:?\s*(\d+)/i);
+            if (numMatch) return parseInt(numMatch[1], 10);
+        }
+        return null;
     }
 
     isAssignmentFinished() {
@@ -171,16 +194,18 @@ export class Scraper {
     }
 
     detectQuestionType(includeSolved = false) {
-        const gridSolved = this._checkIsSolvedFromGrid();
         const containers = this._getQuestionContainers();
 
         for (const container of containers) {
-            if (!includeSolved && container.classList.contains("done")) {
+            const questionNum = this._getQuestionNumber(container);
+            const gridSolved = this._checkIsSolvedFromGrid(questionNum);
+
+            if (!includeSolved && (container.classList.contains("done") || gridSolved === true)) {
                 continue;
             }
 
             logger.debug(
-                "Detecting in container with class:",
+                `Detecting in container for Q${questionNum || "?"} with class:`,
                 container.className || container.tagName,
             );
 
@@ -188,28 +213,28 @@ export class Scraper {
             const isShortSolved =
                 gridSolved !== null ? gridSolved : short.isSolved;
             if (short.blanks.length && (includeSolved || !isShortSolved)) {
-                return { ...short, isSolved: isShortSolved };
+                return { ...short, isSolved: isShortSolved, number: questionNum };
             }
 
             const mcq = this.scrapeMCQ(container);
             const isMcqSolved =
                 gridSolved !== null ? gridSolved : mcq.isSolved;
             if (mcq.options.length && (includeSolved || !isMcqSolved)) {
-                return { ...mcq, isSolved: isMcqSolved };
+                return { ...mcq, isSolved: isMcqSolved, number: questionNum };
             }
 
             const fill = this.scrapeFillable(container);
             const isFillSolved =
                 gridSolved !== null ? gridSolved : fill.isSolved;
             if (fill.blanks.length && (includeSolved || !isFillSolved)) {
-                return { ...fill, isSolved: isFillSolved };
+                return { ...fill, isSolved: isFillSolved, number: questionNum };
             }
 
             const tf = this.scrapeTrueFalse(container);
             const isTfSolved =
                 gridSolved !== null ? gridSolved : tf.isSolved;
             if (tf.subQuestions.length > 0 && (includeSolved || !isTfSolved)) {
-                return { ...tf, isSolved: isTfSolved };
+                return { ...tf, isSolved: isTfSolved, number: questionNum };
             }
         }
         return { type: "unknown" };
