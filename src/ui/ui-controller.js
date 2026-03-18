@@ -140,6 +140,33 @@ export class UIController {
     async fillBlank(blank, text) {
         if (!blank || !blank.element) return false;
         const el = blank.element;
+
+        const isTinyMce = (el.id && el.id.includes('tiny')) || el.closest('app-tinymce-textarea, editor');
+        if (isTinyMce) {
+            logger.debug("Detected TinyMCE textarea, attempting iframe injection");
+            const wrapper = el.closest('app-tinymce-textarea') || el.closest('editor') || el.parentElement;
+            if (wrapper) {
+                const iframe = wrapper.querySelector('iframe.tox-edit-area__iframe') || wrapper.querySelector('iframe');
+                if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
+                    const htmlText = `<p>${text}</p>`;
+                    iframe.contentDocument.body.innerHTML = htmlText;
+                    
+                    // Dispatch events inside iframe to notify TinyMCE's internal bindings
+                    iframe.contentDocument.body.dispatchEvent(new Event("input", { bubbles: true }));
+                    iframe.contentDocument.body.dispatchEvent(new Event("keyup", { bubbles: true }));
+                    
+                    // Force sync the underlying textarea so Angular picks up the model change
+                    el.value = htmlText;
+                    el.dispatchEvent(new Event("input", { bubbles: true }));
+                    el.dispatchEvent(new Event("change", { bubbles: true }));
+                    
+                    logger.debug("Filled TinyMCE iframe with:", text);
+                    return true;
+                } else {
+                    logger.warn("TinyMCE iframe found but contentDocument is inaccessible (possibly cross-origin). Falling back...");
+                }
+            }
+        }
         try {
             await this._simulateTyping(el, text);
             if (el.value !== text) {
