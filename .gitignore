@@ -20,10 +20,6 @@ hw-solver.log
 # Sensitive runtime overrides
 .env.local
 
-# Ignore built artifacts or test outputs
-dist/
-build/
-
 # Optional: ignore local data (if any)
 *.sqlite
 *.db
