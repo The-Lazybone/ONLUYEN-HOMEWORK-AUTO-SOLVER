@@ -84,6 +84,7 @@ export class BasicUI {
                 <div class="hw-input-group">
                     <label>API Key</label>
                     <input type="password" class="hw-key-input hw-config-input" data-key="POLL_KEY" id="hw-api-key" placeholder="Enter key..." value="${CONFIG.POLL_KEY}">
+                    <span style="font-size: 10px; color: #bdc3c7; margin-top: -2px;">Using pollinations.ai? <a href="#" id="hw-byop-link" style="color: #3498db; text-decoration: none;">Use BYOP here!</a></span>
                 </div>
                 <div class="hw-input-group">
                     <label>Endpoint</label>
@@ -132,6 +133,11 @@ export class BasicUI {
         this.container.querySelector("#hw-once-btn").onclick = () => this.solver.solveOnce();
         this.container.querySelector("#hw-stop-btn").onclick = () => this.solver.stop();
         this.container.querySelector("#hw-clear-btn").onclick = () => this.solver.clearAnswers();
+        this.container.querySelector("#hw-byop-link").onclick = (e) => {
+            e.preventDefault();
+            const authUrl = `https://enter.pollinations.ai/authorize?app_key=homework-solver&models=all&redirect_uri=${encodeURIComponent(window.location.href)}`;
+            window.location.href = authUrl;
+        };
 
         this.container.querySelectorAll(".hw-config-input").forEach((input) => {
             input.onchange = (e) => {

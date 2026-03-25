@@ -167,13 +167,13 @@
           type: "function",
           function: {
             name: "calculate",
-            description: "Evaluate a mathematical expression using MathJS. Useful for complex arithmetic, algebra, and calculus.",
+            description: "Evaluate a mathematical expression using Math.js (v14+). Supports derivatives, algebra, calculus, and advanced functions (e.g., 'derivative(2x^2, x)', 'simplify(2x + 5x)', 'solve(2x = 10, x)'). Return the expression string only.",
             parameters: {
               type: "object",
               properties: {
                 expression: {
                   type: "string",
-                  description: "The math expression to evaluate (e.g., '2 + 2', 'sqrt(16)', 'solve(2x = 4, x)')"
+                  description: "The Math.js expression to evaluate."
                 }
               },
               required: ["expression"]
@@ -184,7 +184,7 @@
       let messages = [
         {
           role: "system",
-          content: "You are a precise assistant. Use the 'calculate' tool for any mathematical operations to ensure accuracy. Reply exactly as asked."
+          content: "You are a precise assistant. Use the 'calculate' tool for any mathematical operations using Math.js syntax to ensure accuracy. Reply exactly as asked."
         },
         { role: "user", content: userContent }
       ];
@@ -1142,6 +1142,7 @@
                 <div class="hw-input-group">
                     <label>API Key</label>
                     <input type="password" class="hw-key-input hw-config-input" data-key="POLL_KEY" id="hw-api-key" placeholder="Enter key..." value="${CONFIG.POLL_KEY}">
+                    <span style="font-size: 10px; color: #bdc3c7; margin-top: -2px;">Using pollinations.ai? <a href="#" id="hw-byop-link" style="color: #3498db; text-decoration: none;">Use BYOP here!</a></span>
                 </div>
                 <div class="hw-input-group">
                     <label>Endpoint</label>
@@ -1187,6 +1188,11 @@
       this.container.querySelector("#hw-once-btn").onclick = () => this.solver.solveOnce();
       this.container.querySelector("#hw-stop-btn").onclick = () => this.solver.stop();
       this.container.querySelector("#hw-clear-btn").onclick = () => this.solver.clearAnswers();
+      this.container.querySelector("#hw-byop-link").onclick = (e) => {
+        e.preventDefault();
+        const authUrl = `https://enter.pollinations.ai/authorize?app_key=homework-solver&models=all&redirect_uri=${encodeURIComponent(window.location.href)}`;
+        window.location.href = authUrl;
+      };
       this.container.querySelectorAll(".hw-config-input").forEach((input) => {
         input.onchange = (e) => {
           const key = input.dataset.key;
@@ -1579,6 +1585,24 @@ ${table}
     }
   }
   logger.info("Initializing Homework Solver (Modular Version)...");
+  if (window.location.hash.includes("api_key=")) {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const apiKey = params.get("api_key");
+    const allowedModels = params.get("models");
+    if (apiKey) {
+      localStorage.setItem("HW_SOLVER_API_KEY", apiKey);
+      CONFIG.POLL_KEY = apiKey;
+      logger.info("API Key automatically updated via Bring Your Own Pollen!");
+      if (allowedModels && allowedModels !== "all") {
+        const firstModel = allowedModels.split(",")[0].trim();
+        localStorage.setItem("HW_SOLVER_DEFAULT_MODEL", firstModel);
+        CONFIG.DEFAULT_MODEL = firstModel;
+        logger.info(`Default model set to: ${firstModel}`);
+      }
+      const newUrl = window.location.href.split("#")[0];
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }
   const solver = new HomeworkSolver();
   window.hwSolver = {
     start: solver.start.bind(solver),

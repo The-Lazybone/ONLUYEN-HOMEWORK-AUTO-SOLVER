@@ -3,6 +3,32 @@ import { CONFIG } from './constants.js';
 import { HomeworkSolver } from './core/homework-solver.js';
 
 logger.info("Initializing Homework Solver (Modular Version)...");
+
+// Check for Pollinations BYOP redirect
+if (window.location.hash.includes("api_key=")) {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const apiKey = params.get("api_key");
+    const allowedModels = params.get("models");
+
+    if (apiKey) {
+        localStorage.setItem("HW_SOLVER_API_KEY", apiKey);
+        CONFIG.POLL_KEY = apiKey;
+        logger.info("API Key automatically updated via Bring Your Own Pollen!");
+
+        if (allowedModels && allowedModels !== "all") {
+            // Use the first model in the list as default
+            const firstModel = allowedModels.split(',')[0].trim();
+            localStorage.setItem("HW_SOLVER_DEFAULT_MODEL", firstModel);
+            CONFIG.DEFAULT_MODEL = firstModel;
+            logger.info(`Default model set to: ${firstModel}`);
+        }
+        
+        // Clean up hash without reloading
+        const newUrl = window.location.href.split('#')[0];
+        window.history.replaceState({}, document.title, newUrl);
+    }
+}
+
 const solver = new HomeworkSolver();
 
 // Expose controls to the window

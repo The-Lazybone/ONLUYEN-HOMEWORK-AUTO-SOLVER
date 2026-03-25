@@ -27,13 +27,13 @@ export class APIClient {
                 type: "function",
                 function: {
                     name: "calculate",
-                    description: "Evaluate a mathematical expression using MathJS. Useful for complex arithmetic, algebra, and calculus.",
+                    description: "Evaluate a mathematical expression using Math.js (v14+). Supports derivatives, algebra, calculus, and advanced functions (e.g., 'derivative(2x^2, x)', 'simplify(2x + 5x)', 'solve(2x = 10, x)'). Return the expression string only.",
                     parameters: {
                         type: "object",
                         properties: {
                             expression: {
                                 type: "string",
-                                description: "The math expression to evaluate (e.g., '2 + 2', 'sqrt(16)', 'solve(2x = 4, x)')"
+                                description: "The Math.js expression to evaluate."
                             }
                         },
                         required: ["expression"]
@@ -45,7 +45,7 @@ export class APIClient {
         let messages = [
             {
                 role: "system",
-                content: "You are a precise assistant. Use the 'calculate' tool for any mathematical operations to ensure accuracy. Reply exactly as asked.",
+                content: "You are a precise assistant. Use the 'calculate' tool for any mathematical operations using Math.js syntax to ensure accuracy. Reply exactly as asked.",
             },
             { role: "user", content: userContent },
         ];
