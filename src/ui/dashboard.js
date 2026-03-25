@@ -135,7 +135,7 @@ export class BasicUI {
         this.container.querySelector("#hw-clear-btn").onclick = () => this.solver.clearAnswers();
         this.container.querySelector("#hw-byop-link").onclick = (e) => {
             e.preventDefault();
-            const authUrl = `https://enter.pollinations.ai/authorize?app_key=homework-solver&models=all&redirect_uri=${encodeURIComponent(window.location.href)}`;
+            const authUrl = `https://enter.pollinations.ai/authorize?app_key=homework-solver&models=all&redirect_url=${encodeURIComponent(window.location.href)}`;
             window.location.href = authUrl;
         };
 
