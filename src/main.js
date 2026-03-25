@@ -15,12 +15,17 @@ if (window.location.hash.includes("api_key=")) {
         CONFIG.POLL_KEY = apiKey;
         logger.info("API Key automatically updated via Bring Your Own Pollen!");
 
-        if (allowedModels && allowedModels !== "all") {
-            // Use the first model in the list as default
-            const firstModel = allowedModels.split(',')[0].trim();
-            localStorage.setItem("HW_SOLVER_DEFAULT_MODEL", firstModel);
-            CONFIG.DEFAULT_MODEL = firstModel;
-            logger.info(`Default model set to: ${firstModel}`);
+        if (allowedModels) {
+            const modelList = allowedModels === "all" ? ["openai"] : allowedModels.split(',').map(m => m.trim());
+            const preferredModel = modelList.includes('openai') ? 'openai' : modelList[0];
+
+            if (preferredModel) {
+                localStorage.setItem("HW_SOLVER_DEFAULT_MODEL", preferredModel);
+                localStorage.setItem("HW_SOLVER_VISION_MODEL", preferredModel);
+                CONFIG.DEFAULT_MODEL = preferredModel;
+                CONFIG.VISION_MODEL = preferredModel;
+                logger.info(`Active models synchronized to: ${preferredModel}`);
+            }
         }
         
         // Clean up hash without reloading
