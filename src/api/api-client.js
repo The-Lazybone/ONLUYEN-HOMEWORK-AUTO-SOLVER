@@ -54,7 +54,7 @@ export class APIClient {
         if (CONFIG.POLL_KEY) headers["Authorization"] = `Bearer ${CONFIG.POLL_KEY}`;
 
         let retryCount = 0;
-        const maxToolTurns = 5;
+        const maxToolTurns = 50; // Increased for complex math
 
         while (retryCount < maxToolTurns) {
             const payload = {
@@ -64,11 +64,15 @@ export class APIClient {
                 temperature: 1,
                 tools: tools,
                 tool_choice: "auto",
+                stream: true,
             };
 
-            // Start by assuming max_completion_tokens is supported for thinking models
             if (CONFIG.THINK_BEFORE_ANSWER) {
-                payload.max_completion_tokens = 65535;
+                payload.max_completion_tokens = 128000;
+                payload.thinking = {
+                    type: "enabled",
+                    budget_tokens: 128000
+                };
             } else {
                 payload.max_tokens = 4096;
             }
@@ -84,10 +88,8 @@ export class APIClient {
                     signal: controller.signal,
                 });
 
-                // If it fails because both are somehow specified or max_completion_tokens is unsupported
                 if (!res.ok) {
                     const txt = await res.text().catch(() => "");
-
                     if (res.status === 400 && (txt.includes("cannot specify both max_tokens and max_completion_tokens") || txt.includes("max_completion_tokens"))) {
                         logger.warn("API rejected max_completion_tokens. Retrying with max_tokens only.");
                         delete payload.max_completion_tokens;
@@ -109,17 +111,86 @@ export class APIClient {
                     }
                 }
 
-                const response = await res.json();
-                const message = response.choices?.[0]?.message;
+                // Parse Stream
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let fullMessage = {
+                    role: "assistant",
+                    content: "",
+                    tool_calls: []
+                };
+                let buffer = "";
 
-                if (!message) return response;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n");
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || !trimmed.startsWith("data: ")) continue;
+                        const dataStr = trimmed.slice(6);
+                        if (dataStr === "[DONE]") break;
+
+                        try {
+                            const chunk = JSON.parse(dataStr);
+                            const delta = chunk.choices?.[0]?.delta;
+                            if (!delta) continue;
+
+                            if (delta.content) fullMessage.content += delta.content;
+                            if (delta.reasoning_content) {
+                                // Potentially log or accumulate reasoning
+                                // We'll just ignore for now as the core app expects content
+                            }
+
+                            if (delta.tool_calls) {
+                                for (const tc of delta.tool_calls) {
+                                    if (!fullMessage.tool_calls[tc.index]) {
+                                        fullMessage.tool_calls[tc.index] = {
+                                            id: tc.id,
+                                            type: "function",
+                                            function: { name: "", arguments: "" }
+                                        };
+                                    }
+                                    const target = fullMessage.tool_calls[tc.index];
+                                    if (tc.id) target.id = tc.id;
+                                    if (tc.function?.name) target.function.name += tc.function.name;
+                                    if (tc.function?.arguments) target.function.arguments += tc.function.arguments;
+                                }
+                            }
+                        } catch (e) {
+                            // Ignore parse errors for incomplete chunks
+                        }
+                    }
+                }
+
+                // Filter out null/empty tool calls
+                fullMessage.tool_calls = fullMessage.tool_calls.filter(Boolean);
+
+                const response = { choices: [{ message: fullMessage }] };
+                const message = response.choices[0].message;
+
+                if (!message.content && message.tool_calls.length === 0) {
+                    return response;
+                }
+
+                // Handle Tool Calls
                 if (message.tool_calls && message.tool_calls.length > 0) {
+                    logger.debug(`API - Turn ${retryCount + 1}: Tool cycle started.`);
                     messages.push(message);
 
                     for (const toolCall of message.tool_calls) {
                         const functionName = toolCall.function.name;
-                        const args = JSON.parse(toolCall.function.arguments);
+                        let args = {};
+                        try {
+                            args = JSON.parse(toolCall.function.arguments);
+                        } catch (e) {
+                            logger.warn("Failed to parse tool arguments:", toolCall.function.arguments);
+                        }
+
                         let result = "";
 
                         if (functionName === "calculate") {
@@ -140,11 +211,41 @@ export class APIClient {
                 }
 
                 return response;
+            } catch (err) {
+                if (err.name === "AbortError") throw new Error("API Request timed out.");
+                throw err;
             } finally {
                 clearTimeout(timeoutId);
             }
         }
 
-        throw new Error("Exceeded maximum tool call turns");
+        logger.warn("Maximum tool call turns reached. Returning current state.");
+        // If we hit the limit, return the last assistant message we have
+        const lastAssistantMessageIdx = messages.findLastIndex(m => m.role === "assistant");
+        if (lastAssistantMessageIdx !== -1) {
+            return { choices: [{ message: messages[lastAssistantMessageIdx] }] };
+        }
+        throw new Error("Exceeded maximum tool call turns without an answer.");
+    }
+
+    async uploadFile(blob, filename = "file.pdf") {
+        const formData = new FormData();
+        formData.append("file", blob, filename);
+
+        const headers = {};
+        if (CONFIG.POLL_KEY) headers["Authorization"] = `Bearer ${CONFIG.POLL_KEY}`;
+
+        const response = await fetch("https://media.pollinations.ai/upload", {
+            method: "POST",
+            headers,
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const txt = await response.text().catch(() => "");
+            throw new Error(`Upload failed HTTP ${response.status}: ${txt}`);
+        }
+
+        return await response.json();
     }
 }

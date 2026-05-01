@@ -20,5 +20,8 @@
   "devDependencies": {
     "vite": "^5.0.0",
     "vite-plugin-monkey": "^3.0.0"
+  },
+  "dependencies": {
+    "puppeteer": "^24.40.0"
   }
 }

@@ -6,6 +6,7 @@ import { UIController } from '../ui/ui-controller.js';
 import { WebSearch } from '../api/web-search.js';
 import { Scheduler } from './scheduler.js';
 import { BasicUI } from '../ui/dashboard.js';
+import { PDFProcessor } from './pdf-processor.js';
 import { mathLogic } from './math-logic.js';
 
 export class HomeworkSolver {
@@ -18,22 +19,24 @@ export class HomeworkSolver {
         this.scheduler = new Scheduler(this.solveOnce.bind(this), this);
         this.lastApiResponse = null;
         this.overlay = new BasicUI(this);
+        this.pdfProcessor = new PDFProcessor();
+        this.pdfAnswerKey = null; // Map<number, string>
     }
 
     _getGridItem(num) {
         if (!num)
             return document.querySelector(
-                ".answer-sheet .option.active, .mobile-bottom-bar .number.active",
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active, .list-question span.selected",
             );
         const gridItems = document.querySelectorAll(
-            ".answer-sheet .option, .mobile-bottom-bar .number",
+            ".answer-sheet .option, .mobile-bottom-bar .number, .list-question span",
         );
         return (
             Array.from(gridItems).find(
                 (el) => el.innerText.trim() === String(num),
             ) ||
             document.querySelector(
-                ".answer-sheet .option.active, .mobile-bottom-bar .number.active",
+                ".answer-sheet .option.active, .mobile-bottom-bar .number.active, .list-question span.selected",
             )
         );
     }
@@ -50,7 +53,7 @@ export class HomeworkSolver {
 
     async skipCurrentQuestion() {
         const activeGridItem = document.querySelector(
-            ".answer-sheet .option.active, .mobile-bottom-bar .number.active",
+            ".answer-sheet .option.active, .mobile-bottom-bar .number.active, .list-question span.selected",
         );
         if (activeGridItem) activeGridItem.classList.remove("done");
 
@@ -64,69 +67,196 @@ export class HomeworkSolver {
         this.ui.clearAllAnswers();
         window._lastQNum = -1;
         window._lastQId = -1;
+        this.pdfAnswerKey = null;
         this.overlay.updateStatus("Cleared", "#f39c12");
         setTimeout(() => this.overlay.updateStatus("Ready"), 2000);
     }
 
     async solveOnce(includeSolved = true) {
-        this.overlay.updateStatus("Detecting...", "#3498db");
-        logger.debug("Starting new solve cycle.");
+        try {
+            this.overlay.updateStatus("Detecting...", "#3498db");
+            logger.info("Universal detection cycle started.");
 
-        const detected = this.scraper.detectQuestionType(includeSolved);
-        if (detected.type === "unknown") {
-            if (!includeSolved && this.scraper.isAssignmentFinished()) {
-                return "FINISHED";
+            // --- PDF MODE BRANCH ---
+            const isPDF = this.scraper.isPDFMode();
+            logger.debug("PDF Mode Check:", isPDF);
+
+            if (isPDF) {
+                if (!this.pdfAnswerKey) {
+                    const success = await this._performPDFExtraction();
+                    if (!success) {
+                        this.overlay.updateStatus("PDF Fail", "#e74c3c");
+                        return false;
+                    }
+                }
+
+                const currentNum = this.scraper.getPDFQuestionNumber();
+                const currentType = this.scraper.detectPDFQuestionType();
+                
+                logger.info(`PDF Question Detection - Num: ${currentNum}, Type: ${currentType}`);
+
+                if (!currentNum) {
+                    logger.warn("PDF Mode: Could not determine current question number.");
+                    this.overlay.updateStatus("No Q Num", "#e74c3c");
+                    return false;
+                }
+
+                const answer = this.pdfAnswerKey.get(currentNum);
+                if (!answer) {
+                    logger.warn(`PDF Mode: No answer found in key for Q${currentNum}`);
+                    this.overlay.updateStatus(`No Ans Q${currentNum}`, "#f39c12");
+                    return false;
+                }
+
+                logger.info(`PDF Mode: Applying answer for Q${currentNum} (${currentType}): ${answer}`);
+                this.overlay.updateStatus(`Solving Q${currentNum}...`, "#f39c12");
+                
+                const applied = await this.ui.applyPDFAnswer(currentType, answer);
+                if (applied) {
+                    await new Promise(r => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
+                    const submitted = await this.ui.clickPDFSubmit();
+                    if (submitted) {
+                        const gridItem = this._getGridItem(currentNum);
+                        if (gridItem) gridItem.classList.add("done");
+                        this.overlay.updateStatus(`Q${currentNum} Solved`, "#2ecc71");
+                        return true;
+                    }
+                }
+                return false;
             }
-            logger.info("No questions detected.");
-            this.overlay.updateStatus("No Questions", "#e74c3c");
-            return "NO_QUESTION";
-        }
 
-        const container = detected.container || document;
-        let currentNum = detected.number;
-        let currentId = container.id || null;
+            // --- STANDARD DOM BRANCH ---
+            const detected = this.scraper.detectQuestionType(includeSolved);
+            if (detected.type === "unknown") {
+                if (!includeSolved && this.scraper.isAssignmentFinished()) {
+                    this.overlay.updateStatus("Finished", "#27ae60");
+                    return "FINISHED";
+                }
+                logger.info("No questions detected.");
+                this.overlay.updateStatus("No Questions", "#e74c3c");
+                return "NO_QUESTION";
+            }
 
-        if (!currentNum) {
-            const header = container.querySelector(
-                ".question-header, .quetion-number, .num",
-            );
-            if (header) {
-                const text = header.innerText.trim();
-                const numMatch = text.match(/Câu:?\s*(\d+)/i);
-                if (numMatch) currentNum = parseInt(numMatch[1], 10);
+            const container = detected.container || document;
+            let currentNum = detected.number;
+            let currentId = container.id || null;
 
-                const idElement = header.querySelector("span, .num span");
-                if (idElement) {
-                    const idMatch = idElement.innerText.match(/#(\d+)/);
-                    if (idMatch) currentId = idMatch[1];
+            if (!currentNum) {
+                const header = container.querySelector(
+                    ".question-header, .quetion-number, .num",
+                );
+                if (header) {
+                    const text = header.innerText.trim();
+                    const numMatch = text.match(/Câu:?\s*(\d+)/i);
+                    if (numMatch) currentNum = parseInt(numMatch[1], 10);
+
+                    const idElement = header.querySelector("span, .num span");
+                    if (idElement) {
+                        const idMatch = idElement.innerText.match(/#(\d+)/);
+                        if (idMatch) currentId = idMatch[1];
+                    }
                 }
             }
+
+            logger.info(`Solving ${detected.type.toUpperCase()} - Num: ${currentNum}, ID: ${currentId}`);
+
+            let solvedSuccess = false;
+            switch (detected.type) {
+                case "shortanswer":
+                    solvedSuccess = await this._solveShortAnswer(detected);
+                    break;
+                case "mcq":
+                    solvedSuccess = await this._solveMCQ(detected);
+                    break;
+                case "fillable":
+                    solvedSuccess = await this._solveFillable(detected);
+                    break;
+                case "truefalse":
+                    solvedSuccess = await this._solveTrueFalse(detected);
+                    break;
+            }
+
+            if (solvedSuccess) {
+                window._lastQNum = currentNum;
+                window._lastQId = currentId;
+            }
+
+            return solvedSuccess;
+        } catch (error) {
+            logger.error("Error in solveOnce:", error);
+            this.overlay.updateStatus("Error", "#e74c3c");
+            return false;
         }
+    }
 
-        logger.info(`Solving ${detected.type.toUpperCase()} - Num: ${currentNum}, ID: ${currentId}`);
+    async _performPDFExtraction() {
+        this.overlay.updateStatus("Extracting PDF...", "#9b59b6");
+        try {
+            const pdfUrl = this.scraper.getPDFUrl();
+            if (!pdfUrl) throw new Error("Could not find PDF URL");
 
-        let solvedSuccess = false;
-        switch (detected.type) {
-            case "shortanswer":
-                solvedSuccess = await this._solveShortAnswer(detected);
-                break;
-            case "mcq":
-                solvedSuccess = await this._solveMCQ(detected);
-                break;
-            case "fillable":
-                solvedSuccess = await this._solveFillable(detected);
-                break;
-            case "truefalse":
-                solvedSuccess = await this._solveTrueFalse(detected);
-                break;
+            logger.info("PDF Mode: Found source URL", pdfUrl);
+
+            // 1. Download
+            const res = await fetch(pdfUrl);
+            const blob = await res.blob();
+
+            // 2. Convert PDF to Images (Browser-side)
+            this.overlay.updateStatus("Rendering PDF...", "#3498db");
+            const pageImages = await this.pdfProcessor.pdfToImages(blob);
+            
+            if (!pageImages || pageImages.length === 0) {
+                throw new Error("Failed to render PDF pages to images.");
+            }
+
+            // 3. Prompt AI for full extraction using multimodal vision
+            const prompt = `System: You are an expert educational assistant.
+Task: Analyze the attached sequence of images (which are pages from a single assignment document).
+Generate a structured Answer Key in Vietnamese or English based on the document content.
+
+Format each line exactly as: "[Number]: [Answer]"
+Example:
+1: A
+2: B
+3: Đúng
+4: 15,3
+...etc.
+
+- Output ONLY the question number and the core answer. 
+- Do NOT include question text or explanations.
+- Reply ONLY with the Answer Key.`;
+
+            this.overlay.updateStatus("AI Extraction...", "#f39c12");
+            logger.info("PDF Mode: Sending multimodal request to AI...");
+            
+            const aiResponse = await this.api.call(prompt, pageImages);
+            const content = aiResponse?.choices?.[0]?.message?.content || "";
+            logger.info("PDF Mode: Raw AI Response:", content);
+            
+            // 4. Parse into Map
+            this.pdfAnswerKey = new Map();
+            const lines = content.split('\n');
+            for (const line of lines) {
+                const match = line.match(/^\s*(\d+)[\.\:\s-]+\s*(.+)$/i);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    const ans = match[2].trim();
+                    this.pdfAnswerKey.set(num, ans);
+                }
+            }
+
+            if (this.pdfAnswerKey.size === 0) {
+                throw new Error("AI returned an empty or unparseable Answer Key.");
+            }
+
+            logger.info(`PDF Mode: Successfully extracted ${this.pdfAnswerKey.size} answers.`);
+            this.overlay.updateStatus(`Ready (${this.pdfAnswerKey.size} Ans)`, "#2ecc71");
+            return true;
+        } catch (e) {
+            logger.error("PDF Extraction failed:", e);
+            this.overlay.updateStatus("Extraction Failed", "#e74c3c");
+            return false;
         }
-
-        if (solvedSuccess) {
-            window._lastQNum = currentNum;
-            window._lastQId = currentId;
-        }
-
-        return solvedSuccess;
     }
 
     _buildMCQPrompt(question, options, searchResult = "") {

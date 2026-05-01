@@ -562,4 +562,70 @@ export class Scraper {
             container,
         };
     }
+
+    isPDFMode() {
+        // Robust detection: ID, class, OR any iframe with viewer.html
+        const hasId = !!document.getElementById("iframePDF");
+        const hasClass = !!document.querySelector(".pdf-test");
+        const hasIframe = !!document.querySelector("iframe[src*='viewer.html']");
+        const hasGlobal = typeof window.pdfSrc !== "undefined";
+        
+        const result = hasId || hasClass || hasIframe || hasGlobal;
+        logger.debug(`PDF Mode Detection: id=${hasId}, class=${hasClass}, iframe=${hasIframe}, global=${hasGlobal} -> ${result}`);
+        return result;
+    }
+
+    getPDFUrl() {
+        // Method 1: Iframe ID
+        const iframe = document.getElementById("iframePDF") || document.querySelector("iframe[src*='viewer.html']");
+        if (iframe) {
+            const match = iframe.src.match(/\?file=([^&]+)/);
+            if (match) return decodeURIComponent(match[1]);
+        }
+
+        // Method 2: Global variable (seen in user logs)
+        if (typeof window.pdfSrc === "string") {
+            return decodeURIComponent(window.pdfSrc);
+        }
+
+        // Method 3: URL params of the main page
+        const urlParams = new URLSearchParams(window.location.search);
+        const fileParam = urlParams.get('file') || urlParams.get('pdfSrc');
+        if (fileParam) return fileParam;
+
+        return null;
+    }
+
+    getPDFQuestionNumber() {
+        const selected = document.querySelector(".list-question span.selected");
+        return selected ? parseInt(selected.innerText.trim(), 10) : null;
+    }
+
+    /**
+     * Identifies the current question type in PDF sidebar (MCQ, T/F, or Fillable).
+     */
+    detectPDFQuestionType() {
+        const sidebar = document.querySelector(".userSelected");
+        if (!sidebar) return "unknown";
+
+        const listAnswer = sidebar.querySelector(".list-answer");
+        if (!listAnswer) return "unknown";
+
+        // MCQ check: Has multiple spans with A, B, C, D
+        if (listAnswer.querySelectorAll("span").length >= 4) {
+            return "mcq";
+        }
+
+        // True/False check: Has .select-answer blocks
+        if (listAnswer.querySelector(".select-answer")) {
+            return "truefalse";
+        }
+
+        // Fillable check: Has input or textarea
+        if (listAnswer.querySelector("input, textarea")) {
+            return "shortanswer";
+        }
+
+        return "unknown";
+    }
 }

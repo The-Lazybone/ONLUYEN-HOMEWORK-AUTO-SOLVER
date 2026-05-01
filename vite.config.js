@@ -14,7 +14,10 @@ export default defineConfig({
                 match: ['https://*.onluyen.vn/*'],
                 icon: 'https://www.google.com/s2/favicons?sz=64&domain=onluyen.vn',
                 grant: ['none'],
-                require: ['https://cdnjs.cloudflare.com/ajax/libs/mathjs/14.0.1/math.js'],
+                require: [
+                    'https://cdnjs.cloudflare.com/ajax/libs/mathjs/14.0.1/math.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'
+                ],
                 updateURL: 'https://github.com/The-Lazybone/ONLUYEN-HOMEWORK-AUTO-SOLVER/raw/main/dist/solver.user.js',
                 downloadURL: 'https://github.com/The-Lazybone/ONLUYEN-HOMEWORK-AUTO-SOLVER/raw/main/dist/solver.user.js',
             },

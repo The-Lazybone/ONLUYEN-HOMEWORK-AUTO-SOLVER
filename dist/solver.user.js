@@ -10,6 +10,7 @@
 // @updateURL    https://github.com/The-Lazybone/ONLUYEN-HOMEWORK-AUTO-SOLVER/raw/main/dist/solver.user.js
 // @match        https://*.onluyen.vn/*
 // @require      https://cdnjs.cloudflare.com/ajax/libs/mathjs/14.0.1/math.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js
 // @grant        none
 // ==/UserScript==
 
@@ -152,7 +153,7 @@
       this.webSearch = new WebSearch();
     }
     async call(prompt, images = []) {
-      var _a, _b;
+      var _a, _b, _c, _d;
       if (!CONFIG.PROXY_URL) throw new Error("Proxy not configured");
       const userContent = [{ type: "text", text: prompt }];
       images.forEach((imgSrc) => {
@@ -191,7 +192,7 @@
       const headers = { "Content-Type": "application/json" };
       if (CONFIG.POLL_KEY) headers["Authorization"] = `Bearer ${CONFIG.POLL_KEY}`;
       let retryCount = 0;
-      const maxToolTurns = 5;
+      const maxToolTurns = 50;
       while (retryCount < maxToolTurns) {
         const payload = {
           model: modelToUse,
@@ -199,10 +200,15 @@
           messages,
           temperature: 1,
           tools,
-          tool_choice: "auto"
+          tool_choice: "auto",
+          stream: true
         };
         if (CONFIG.THINK_BEFORE_ANSWER) {
-          payload.max_completion_tokens = 65535;
+          payload.max_completion_tokens = 128e3;
+          payload.thinking = {
+            type: "enabled",
+            budget_tokens: 128e3
+          };
         } else {
           payload.max_tokens = 4096;
         }
@@ -235,14 +241,68 @@
               throw new Error(`HTTP ${res.status}: ${txt}`);
             }
           }
-          const response = await res.json();
-          const message = (_b = (_a = response.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message;
-          if (!message) return response;
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let fullMessage = {
+            role: "assistant",
+            content: "",
+            tool_calls: []
+          };
+          let buffer = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith("data: ")) continue;
+              const dataStr = trimmed.slice(6);
+              if (dataStr === "[DONE]") break;
+              try {
+                const chunk = JSON.parse(dataStr);
+                const delta = (_b = (_a = chunk.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.delta;
+                if (!delta) continue;
+                if (delta.content) fullMessage.content += delta.content;
+                if (delta.reasoning_content) {
+                }
+                if (delta.tool_calls) {
+                  for (const tc of delta.tool_calls) {
+                    if (!fullMessage.tool_calls[tc.index]) {
+                      fullMessage.tool_calls[tc.index] = {
+                        id: tc.id,
+                        type: "function",
+                        function: { name: "", arguments: "" }
+                      };
+                    }
+                    const target = fullMessage.tool_calls[tc.index];
+                    if (tc.id) target.id = tc.id;
+                    if ((_c = tc.function) == null ? void 0 : _c.name) target.function.name += tc.function.name;
+                    if ((_d = tc.function) == null ? void 0 : _d.arguments) target.function.arguments += tc.function.arguments;
+                  }
+                }
+              } catch (e) {
+              }
+            }
+          }
+          fullMessage.tool_calls = fullMessage.tool_calls.filter(Boolean);
+          const response = { choices: [{ message: fullMessage }] };
+          const message = response.choices[0].message;
+          if (!message.content && message.tool_calls.length === 0) {
+            return response;
+          }
           if (message.tool_calls && message.tool_calls.length > 0) {
+            logger.debug(`API - Turn ${retryCount + 1}: Tool cycle started.`);
             messages.push(message);
             for (const toolCall of message.tool_calls) {
               const functionName = toolCall.function.name;
-              const args = JSON.parse(toolCall.function.arguments);
+              let args = {};
+              try {
+                args = JSON.parse(toolCall.function.arguments);
+              } catch (e) {
+                logger.warn("Failed to parse tool arguments:", toolCall.function.arguments);
+              }
               let result = "";
               if (functionName === "calculate") {
                 logger.info(`AI Tool - Calculate: ${args.expression}`);
@@ -260,11 +320,35 @@
             continue;
           }
           return response;
+        } catch (err) {
+          if (err.name === "AbortError") throw new Error("API Request timed out.");
+          throw err;
         } finally {
           clearTimeout(timeoutId);
         }
       }
-      throw new Error("Exceeded maximum tool call turns");
+      logger.warn("Maximum tool call turns reached. Returning current state.");
+      const lastAssistantMessageIdx = messages.findLastIndex((m) => m.role === "assistant");
+      if (lastAssistantMessageIdx !== -1) {
+        return { choices: [{ message: messages[lastAssistantMessageIdx] }] };
+      }
+      throw new Error("Exceeded maximum tool call turns without an answer.");
+    }
+    async uploadFile(blob, filename = "file.pdf") {
+      const formData = new FormData();
+      formData.append("file", blob, filename);
+      const headers = {};
+      if (CONFIG.POLL_KEY) headers["Authorization"] = `Bearer ${CONFIG.POLL_KEY}`;
+      const response = await fetch("https://media.pollinations.ai/upload", {
+        method: "POST",
+        headers,
+        body: formData
+      });
+      if (!response.ok) {
+        const txt = await response.text().catch(() => "");
+        throw new Error(`Upload failed HTTP ${response.status}: ${txt}`);
+      }
+      return await response.json();
     }
   }
   class Scraper {
@@ -707,6 +791,52 @@
         container
       };
     }
+    isPDFMode() {
+      const hasId = !!document.getElementById("iframePDF");
+      const hasClass = !!document.querySelector(".pdf-test");
+      const hasIframe = !!document.querySelector("iframe[src*='viewer.html']");
+      const hasGlobal = typeof window.pdfSrc !== "undefined";
+      const result = hasId || hasClass || hasIframe || hasGlobal;
+      logger.debug(`PDF Mode Detection: id=${hasId}, class=${hasClass}, iframe=${hasIframe}, global=${hasGlobal} -> ${result}`);
+      return result;
+    }
+    getPDFUrl() {
+      const iframe = document.getElementById("iframePDF") || document.querySelector("iframe[src*='viewer.html']");
+      if (iframe) {
+        const match = iframe.src.match(/\?file=([^&]+)/);
+        if (match) return decodeURIComponent(match[1]);
+      }
+      if (typeof window.pdfSrc === "string") {
+        return decodeURIComponent(window.pdfSrc);
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      const fileParam = urlParams.get("file") || urlParams.get("pdfSrc");
+      if (fileParam) return fileParam;
+      return null;
+    }
+    getPDFQuestionNumber() {
+      const selected = document.querySelector(".list-question span.selected");
+      return selected ? parseInt(selected.innerText.trim(), 10) : null;
+    }
+    /**
+     * Identifies the current question type in PDF sidebar (MCQ, T/F, or Fillable).
+     */
+    detectPDFQuestionType() {
+      const sidebar = document.querySelector(".userSelected");
+      if (!sidebar) return "unknown";
+      const listAnswer = sidebar.querySelector(".list-answer");
+      if (!listAnswer) return "unknown";
+      if (listAnswer.querySelectorAll("span").length >= 4) {
+        return "mcq";
+      }
+      if (listAnswer.querySelector(".select-answer")) {
+        return "truefalse";
+      }
+      if (listAnswer.querySelector("input, textarea")) {
+        return "shortanswer";
+      }
+      return "unknown";
+    }
   }
   class UIController {
     _simulateClick(el) {
@@ -991,6 +1121,55 @@
       logger.info("All answers cleared.");
       return true;
     }
+    async applyPDFAnswer(type, answer) {
+      const sidebar = document.querySelector(".userSelected");
+      if (!sidebar) return false;
+      const listAnswer = sidebar.querySelector(".list-answer");
+      if (!listAnswer) return false;
+      if (type === "mcq") {
+        const letter = answer.trim().toUpperCase();
+        const options = Array.from(listAnswer.querySelectorAll("span"));
+        const target = options.find((s) => s.innerText.trim().toUpperCase() === letter);
+        if (target) {
+          this._simulateClick(target);
+          return true;
+        }
+      } else if (type === "truefalse") {
+        const values = answer.split(",").map((s) => s.trim().toUpperCase());
+        const blocks = Array.from(listAnswer.querySelectorAll(".select-answer"));
+        for (let i = 0; i < Math.min(values.length, blocks.length); i++) {
+          const val = values[i];
+          const block = blocks[i];
+          const textBlocks = Array.from(block.querySelectorAll(".text-block"));
+          const target = textBlocks.find(
+            (tb) => val === "TRUE" && tb.innerText.includes("Đúng") || val === "FALSE" && tb.innerText.includes("Sai")
+          );
+          if (target) {
+            this._simulateClick(target);
+            await new Promise((r) => setTimeout(r, 200));
+          }
+        }
+        return true;
+      } else if (type === "shortanswer") {
+        const input = listAnswer.querySelector("input, textarea");
+        if (input) {
+          await this._simulateTyping(input, answer);
+          return true;
+        }
+      }
+      return false;
+    }
+    async clickPDFSubmit() {
+      const sidebar = document.querySelector(".userSelected");
+      if (!sidebar) return false;
+      const submitBtn = sidebar.querySelector("button.btn-primary");
+      if (submitBtn) {
+        this._simulateClick(submitBtn);
+        await new Promise((r) => setTimeout(r, 1e3));
+        return true;
+      }
+      return false;
+    }
   }
   class Scheduler {
     constructor(task, solver2) {
@@ -1242,6 +1421,49 @@
       }
     }
   }
+  class PDFProcessor {
+    constructor() {
+      if (typeof pdfjsLib === "undefined") {
+        logger.error("PDFProcessor: pdfjsLib is not loaded. Ensure @require matches.");
+      } else {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+    }
+    /**
+     * Converts a PDF Blob into an array of JPEG Data URLs
+     * @param {Blob} blob 
+     * @returns {Promise<string[]>}
+     */
+    async pdfToImages(blob) {
+      try {
+        const arrayBuffer = await blob.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        const images = [];
+        logger.info(`PDFProcessor: Starting conversion of ${pdf.numPages} pages.`);
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          await page.render({
+            canvasContext: context,
+            viewport
+          }).promise;
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          images.push(dataUrl);
+          logger.debug(`PDFProcessor: Rendered page ${i}/${pdf.numPages}`);
+        }
+        logger.info("PDFProcessor: Conversion complete.");
+        return images;
+      } catch (error) {
+        logger.error("PDFProcessor: Error converting PDF:", error);
+        throw error;
+      }
+    }
+  }
   class HomeworkSolver {
     constructor() {
       this.api = new APIClient();
@@ -1252,19 +1474,21 @@
       this.scheduler = new Scheduler(this.solveOnce.bind(this), this);
       this.lastApiResponse = null;
       this.overlay = new BasicUI(this);
+      this.pdfProcessor = new PDFProcessor();
+      this.pdfAnswerKey = null;
     }
     _getGridItem(num) {
       if (!num)
         return document.querySelector(
-          ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+          ".answer-sheet .option.active, .mobile-bottom-bar .number.active, .list-question span.selected"
         );
       const gridItems = document.querySelectorAll(
-        ".answer-sheet .option, .mobile-bottom-bar .number"
+        ".answer-sheet .option, .mobile-bottom-bar .number, .list-question span"
       );
       return Array.from(gridItems).find(
         (el) => el.innerText.trim() === String(num)
       ) || document.querySelector(
-        ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+        ".answer-sheet .option.active, .mobile-bottom-bar .number.active, .list-question span.selected"
       );
     }
     start() {
@@ -1277,7 +1501,7 @@
     }
     async skipCurrentQuestion() {
       const activeGridItem = document.querySelector(
-        ".answer-sheet .option.active, .mobile-bottom-bar .number.active"
+        ".answer-sheet .option.active, .mobile-bottom-bar .number.active, .list-question span.selected"
       );
       if (activeGridItem) activeGridItem.classList.remove("done");
       const containers = this.scraper._getQuestionContainers();
@@ -1288,60 +1512,163 @@
       this.ui.clearAllAnswers();
       window._lastQNum = -1;
       window._lastQId = -1;
+      this.pdfAnswerKey = null;
       this.overlay.updateStatus("Cleared", "#f39c12");
       setTimeout(() => this.overlay.updateStatus("Ready"), 2e3);
     }
     async solveOnce(includeSolved = true) {
-      this.overlay.updateStatus("Detecting...", "#3498db");
-      logger.debug("Starting new solve cycle.");
-      const detected = this.scraper.detectQuestionType(includeSolved);
-      if (detected.type === "unknown") {
-        if (!includeSolved && this.scraper.isAssignmentFinished()) {
-          return "FINISHED";
+      try {
+        this.overlay.updateStatus("Detecting...", "#3498db");
+        logger.info("Universal detection cycle started.");
+        const isPDF = this.scraper.isPDFMode();
+        logger.debug("PDF Mode Check:", isPDF);
+        if (isPDF) {
+          if (!this.pdfAnswerKey) {
+            const success = await this._performPDFExtraction();
+            if (!success) {
+              this.overlay.updateStatus("PDF Fail", "#e74c3c");
+              return false;
+            }
+          }
+          const currentNum2 = this.scraper.getPDFQuestionNumber();
+          const currentType = this.scraper.detectPDFQuestionType();
+          logger.info(`PDF Question Detection - Num: ${currentNum2}, Type: ${currentType}`);
+          if (!currentNum2) {
+            logger.warn("PDF Mode: Could not determine current question number.");
+            this.overlay.updateStatus("No Q Num", "#e74c3c");
+            return false;
+          }
+          const answer = this.pdfAnswerKey.get(currentNum2);
+          if (!answer) {
+            logger.warn(`PDF Mode: No answer found in key for Q${currentNum2}`);
+            this.overlay.updateStatus(`No Ans Q${currentNum2}`, "#f39c12");
+            return false;
+          }
+          logger.info(`PDF Mode: Applying answer for Q${currentNum2} (${currentType}): ${answer}`);
+          this.overlay.updateStatus(`Solving Q${currentNum2}...`, "#f39c12");
+          const applied = await this.ui.applyPDFAnswer(currentType, answer);
+          if (applied) {
+            await new Promise((r) => setTimeout(r, CONFIG.HUMAN_DELAY_MIN));
+            const submitted = await this.ui.clickPDFSubmit();
+            if (submitted) {
+              const gridItem = this._getGridItem(currentNum2);
+              if (gridItem) gridItem.classList.add("done");
+              this.overlay.updateStatus(`Q${currentNum2} Solved`, "#2ecc71");
+              return true;
+            }
+          }
+          return false;
         }
-        logger.info("No questions detected.");
-        this.overlay.updateStatus("No Questions", "#e74c3c");
-        return "NO_QUESTION";
-      }
-      const container = detected.container || document;
-      let currentNum = detected.number;
-      let currentId = container.id || null;
-      if (!currentNum) {
-        const header = container.querySelector(
-          ".question-header, .quetion-number, .num"
-        );
-        if (header) {
-          const text = header.innerText.trim();
-          const numMatch = text.match(/Câu:?\s*(\d+)/i);
-          if (numMatch) currentNum = parseInt(numMatch[1], 10);
-          const idElement = header.querySelector("span, .num span");
-          if (idElement) {
-            const idMatch = idElement.innerText.match(/#(\d+)/);
-            if (idMatch) currentId = idMatch[1];
+        const detected = this.scraper.detectQuestionType(includeSolved);
+        if (detected.type === "unknown") {
+          if (!includeSolved && this.scraper.isAssignmentFinished()) {
+            this.overlay.updateStatus("Finished", "#27ae60");
+            return "FINISHED";
+          }
+          logger.info("No questions detected.");
+          this.overlay.updateStatus("No Questions", "#e74c3c");
+          return "NO_QUESTION";
+        }
+        const container = detected.container || document;
+        let currentNum = detected.number;
+        let currentId = container.id || null;
+        if (!currentNum) {
+          const header = container.querySelector(
+            ".question-header, .quetion-number, .num"
+          );
+          if (header) {
+            const text = header.innerText.trim();
+            const numMatch = text.match(/Câu:?\s*(\d+)/i);
+            if (numMatch) currentNum = parseInt(numMatch[1], 10);
+            const idElement = header.querySelector("span, .num span");
+            if (idElement) {
+              const idMatch = idElement.innerText.match(/#(\d+)/);
+              if (idMatch) currentId = idMatch[1];
+            }
           }
         }
+        logger.info(`Solving ${detected.type.toUpperCase()} - Num: ${currentNum}, ID: ${currentId}`);
+        let solvedSuccess = false;
+        switch (detected.type) {
+          case "shortanswer":
+            solvedSuccess = await this._solveShortAnswer(detected);
+            break;
+          case "mcq":
+            solvedSuccess = await this._solveMCQ(detected);
+            break;
+          case "fillable":
+            solvedSuccess = await this._solveFillable(detected);
+            break;
+          case "truefalse":
+            solvedSuccess = await this._solveTrueFalse(detected);
+            break;
+        }
+        if (solvedSuccess) {
+          window._lastQNum = currentNum;
+          window._lastQId = currentId;
+        }
+        return solvedSuccess;
+      } catch (error) {
+        logger.error("Error in solveOnce:", error);
+        this.overlay.updateStatus("Error", "#e74c3c");
+        return false;
       }
-      logger.info(`Solving ${detected.type.toUpperCase()} - Num: ${currentNum}, ID: ${currentId}`);
-      let solvedSuccess = false;
-      switch (detected.type) {
-        case "shortanswer":
-          solvedSuccess = await this._solveShortAnswer(detected);
-          break;
-        case "mcq":
-          solvedSuccess = await this._solveMCQ(detected);
-          break;
-        case "fillable":
-          solvedSuccess = await this._solveFillable(detected);
-          break;
-        case "truefalse":
-          solvedSuccess = await this._solveTrueFalse(detected);
-          break;
+    }
+    async _performPDFExtraction() {
+      var _a, _b, _c;
+      this.overlay.updateStatus("Extracting PDF...", "#9b59b6");
+      try {
+        const pdfUrl = this.scraper.getPDFUrl();
+        if (!pdfUrl) throw new Error("Could not find PDF URL");
+        logger.info("PDF Mode: Found source URL", pdfUrl);
+        const res = await fetch(pdfUrl);
+        const blob = await res.blob();
+        this.overlay.updateStatus("Rendering PDF...", "#3498db");
+        const pageImages = await this.pdfProcessor.pdfToImages(blob);
+        if (!pageImages || pageImages.length === 0) {
+          throw new Error("Failed to render PDF pages to images.");
+        }
+        const prompt = `System: You are an expert educational assistant.
+Task: Analyze the attached sequence of images (which are pages from a single assignment document).
+Generate a structured Answer Key in Vietnamese or English based on the document content.
+
+Format each line exactly as: "[Number]: [Answer]"
+Example:
+1: A
+2: B
+3: Đúng
+4: 15,3
+...etc.
+
+- Output ONLY the question number and the core answer. 
+- Do NOT include question text or explanations.
+- Reply ONLY with the Answer Key.`;
+        this.overlay.updateStatus("AI Extraction...", "#f39c12");
+        logger.info("PDF Mode: Sending multimodal request to AI...");
+        const aiResponse = await this.api.call(prompt, pageImages);
+        const content = ((_c = (_b = (_a = aiResponse == null ? void 0 : aiResponse.choices) == null ? void 0 : _a[0]) == null ? void 0 : _b.message) == null ? void 0 : _c.content) || "";
+        logger.info("PDF Mode: Raw AI Response:", content);
+        this.pdfAnswerKey = /* @__PURE__ */ new Map();
+        const lines = content.split("\n");
+        for (const line of lines) {
+          const match = line.match(/^\s*(\d+)[\.\:\s-]+\s*(.+)$/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            const ans = match[2].trim();
+            this.pdfAnswerKey.set(num, ans);
+          }
+        }
+        if (this.pdfAnswerKey.size === 0) {
+          throw new Error("AI returned an empty or unparseable Answer Key.");
+        }
+        logger.info(`PDF Mode: Successfully extracted ${this.pdfAnswerKey.size} answers.`);
+        this.overlay.updateStatus(`Ready (${this.pdfAnswerKey.size} Ans)`, "#2ecc71");
+        return true;
+      } catch (e) {
+        logger.error("PDF Extraction failed:", e);
+        this.overlay.updateStatus("Extraction Failed", "#e74c3c");
+        return false;
       }
-      if (solvedSuccess) {
-        window._lastQNum = currentNum;
-        window._lastQId = currentId;
-      }
-      return solvedSuccess;
     }
     _buildMCQPrompt(question, options, searchResult = "") {
       const thinkPrefix = CONFIG.THINK_BEFORE_ANSWER ? 'Internally use step-by-step reasoning as a reasoning model would, but do NOT reveal your chain-of-thought. Reply only with the final single-letter answer prefixed by "FINAL:" (for example: FINAL: A).\n\n' : "";

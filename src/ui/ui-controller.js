@@ -337,4 +337,62 @@ export class UIController {
         logger.info("All answers cleared.");
         return true;
     }
+
+    async applyPDFAnswer(type, answer) {
+        const sidebar = document.querySelector(".userSelected");
+        if (!sidebar) return false;
+
+        const listAnswer = sidebar.querySelector(".list-answer");
+        if (!listAnswer) return false;
+
+        if (type === "mcq") {
+            const letter = answer.trim().toUpperCase();
+            const options = Array.from(listAnswer.querySelectorAll("span"));
+            const target = options.find((s) => s.innerText.trim().toUpperCase() === letter);
+            if (target) {
+                this._simulateClick(target);
+                return true;
+            }
+        } else if (type === "truefalse") {
+            // answer format: "TRUE, FALSE, TRUE, FALSE"
+            const values = answer.split(",").map((s) => s.trim().toUpperCase());
+            const blocks = Array.from(listAnswer.querySelectorAll(".select-answer"));
+            
+            for (let i = 0; i < Math.min(values.length, blocks.length); i++) {
+                const val = values[i];
+                const block = blocks[i];
+                const textBlocks = Array.from(block.querySelectorAll(".text-block"));
+                const target = textBlocks.find((tb) => 
+                    (val === "TRUE" && tb.innerText.includes("Đúng")) ||
+                    (val === "FALSE" && tb.innerText.includes("Sai"))
+                );
+                if (target) {
+                    this._simulateClick(target);
+                    await new Promise(r => setTimeout(r, 200));
+                }
+            }
+            return true;
+        } else if (type === "shortanswer") {
+            const input = listAnswer.querySelector("input, textarea");
+            if (input) {
+                await this._simulateTyping(input, answer);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    async clickPDFSubmit() {
+        const sidebar = document.querySelector(".userSelected");
+        if (!sidebar) return false;
+
+        const submitBtn = sidebar.querySelector("button.btn-primary");
+        if (submitBtn) {
+            this._simulateClick(submitBtn);
+            await new Promise((r) => setTimeout(r, 1000));
+            return true;
+        }
+        return false;
+    }
 }
